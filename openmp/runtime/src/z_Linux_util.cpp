@@ -29,7 +29,9 @@
 #include <semaphore.h>
 #endif // KMP_OS_LINUX
 #include <sys/resource.h>
+#ifndef KMP_OS_HAIKU
 #include <sys/syscall.h>
+#endif
 #include <sys/time.h>
 #include <sys/times.h>
 #include <unistd.h>
@@ -72,7 +74,7 @@ struct kmp_sys_timer {
   struct timespec start;
 };
 
-#if KMP_OS_SOLARIS
+#if KMP_OS_HAIKU || KMP_OS_SOLARIS
 // Convert timeval to timespec.
 #define TIMEVAL_TO_TIMESPEC(tv, ts)                                            \
   do {                                                                         \
@@ -420,7 +422,7 @@ void __kmp_terminate_thread(int gtid) {
 static kmp_int32 __kmp_set_stack_info(int gtid, kmp_info_t *th) {
   int stack_data;
 #if KMP_OS_LINUX || KMP_OS_DRAGONFLY || KMP_OS_FREEBSD || KMP_OS_NETBSD ||     \
-    KMP_OS_HURD || KMP_OS_SOLARIS
+    KMP_OS_HAIKU || KMP_OS_HURD || KMP_OS_SOLARIS
   pthread_attr_t attr;
   int status;
   size_t size = 0;
@@ -459,7 +461,7 @@ static kmp_int32 __kmp_set_stack_info(int gtid, kmp_info_t *th) {
     return TRUE;
   }
 #endif /* KMP_OS_LINUX || KMP_OS_DRAGONFLY || KMP_OS_FREEBSD || KMP_OS_NETBSD  \
-          || KMP_OS_HURD || KMP_OS_SOLARIS */
+          || KMP_OS_HAIKU || KMP_OS_HURD || KMP_OS_SOLARIS */
   /* Use incremental refinement starting from initial conservative estimate */
   TCW_PTR(th->th.th_info.ds.ds_stacksize, 0);
   TCW_PTR(th->th.th_info.ds.ds_stackbase, &stack_data);
@@ -474,7 +476,7 @@ static void *__kmp_launch_worker(void *thr) {
 #endif /* KMP_BLOCK_SIGNALS */
   void *exit_val;
 #if KMP_OS_LINUX || KMP_OS_DRAGONFLY || KMP_OS_FREEBSD || KMP_OS_NETBSD ||     \
-    KMP_OS_OPENBSD || KMP_OS_HURD || KMP_OS_SOLARIS
+    KMP_OS_OPENBSD || KMP_OS_HAIKU || KMP_OS_HURD || KMP_OS_SOLARIS
   void *volatile padding = 0;
 #endif
   int gtid;
@@ -523,7 +525,7 @@ static void *__kmp_launch_worker(void *thr) {
 #endif /* KMP_BLOCK_SIGNALS */
 
 #if KMP_OS_LINUX || KMP_OS_DRAGONFLY || KMP_OS_FREEBSD || KMP_OS_NETBSD ||     \
-    KMP_OS_OPENBSD || KMP_OS_HURD || KMP_OS_SOLARIS
+    KMP_OS_OPENBSD || KMP_OS_HAIKU || KMP_OS_HURD || KMP_OS_SOLARIS
   if (__kmp_stkoffset > 0 && gtid > 0) {
     padding = KMP_ALLOCA(gtid * __kmp_stkoffset);
     (void)padding;
@@ -1824,7 +1826,7 @@ static int __kmp_get_xproc(void) {
   __kmp_type_convert(sysconf(_SC_NPROCESSORS_CONF), &(r));
 
 #elif KMP_OS_DRAGONFLY || KMP_OS_FREEBSD || KMP_OS_NETBSD || KMP_OS_OPENBSD || \
-    KMP_OS_HURD || KMP_OS_SOLARIS
+    KMP_OS_HAIKU || KMP_OS_HURD || KMP_OS_SOLARIS
 
   __kmp_type_convert(sysconf(_SC_NPROCESSORS_ONLN), &(r));
 
@@ -2200,9 +2202,9 @@ int __kmp_is_address_mapped(void *addr) {
     }
     kiv.kve_start += 1;
   }
-#elif KMP_OS_DRAGONFLY || KMP_OS_SOLARIS
+#elif KMP_OS_DRAGONFLY ||KMP_OS_HAIKU || KMP_OS_SOLARIS
 
-  // FIXME(DragonFly, Solaris): Implement this
+  // FIXME(DragonFly, Haiku, Solaris): Implement this
   found = 1;
 
 #else
@@ -2247,6 +2249,12 @@ int __kmp_get_load_balance(int max) {
   }
 
   return ret_avg;
+}
+
+#elif KMP_OS_HAIKU
+
+int __kmp_get_load_balance(int max) {
+  return -1;
 }
 
 #else // Linux* OS
