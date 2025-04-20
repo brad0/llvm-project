@@ -783,14 +783,7 @@ static int dl_iterate_phdr_cb(dl_phdr_info *info, size_t size, void *arg) {
 }
 
 static bool requiresProcmaps() {
-#  if SANITIZER_ANDROID && __ANDROID_API__ <= 22
-  // Fall back to /proc/maps if dl_iterate_phdr is unavailable or broken.
-  // The runtime check allows the same library to work with
-  // both K and L (and future) Android releases.
-  return AndroidGetApiLevel() <= ANDROID_LOLLIPOP_MR1;
-#  else
   return false;
-#  endif
 }
 
 static void procmapsInit(InternalMmapVectorNoCtor<LoadedModule> *modules) {
