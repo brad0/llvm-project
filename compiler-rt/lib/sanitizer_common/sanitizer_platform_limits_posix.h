@@ -629,7 +629,11 @@ typedef unsigned long __sanitizer_sigset_t;
 #  elif SANITIZER_APPLE
 typedef unsigned __sanitizer_sigset_t;
 #  elif SANITIZER_HAIKU
+#   if defined(__x86_64__)
 typedef unsigned long __sanitizer_sigset_t;
+#   else
+typedef unsigned long long __sanitizer_sigset_t;
+#   endif
 #  elif SANITIZER_LINUX
 struct __sanitizer_sigset_t {
   // The size is determined by looking at sizeof of real sigset_t on linux.
