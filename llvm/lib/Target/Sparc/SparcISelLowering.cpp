@@ -2868,6 +2868,45 @@ static SDValue LowerSTRICT_FSETCC(SDValue Op, SelectionDAG &DAG,
   return DAG.getMergeValues({Res, Chain}, dl);
 }
 
+// If this is a br_cc on the result of a constrained FP compare that was
+// lowered into a STRICT_CMPFCC*/SELECT_FCC pair, return the compare's glue so
+// that the branch can test the FP condition codes directly instead of
+// materializing the result and comparing it against zero.
+//
+// The compare is glued to the branch, so nothing may be scheduled between
+// them. That is only safe if the compare's output chain feeds nothing but the
+// branch, either directly or through a token factor used only by the branch.
+static SDValue LookThroughStrictSetCC(SDValue Chain, SDValue LHS, SDValue RHS,
+                                      ISD::CondCode CC, unsigned &SPCC) {
+  if (CC != ISD::SETNE || !isNullConstant(RHS) ||
+      LHS.getOpcode() != SPISD::SELECT_FCC || !LHS.hasOneUse() ||
+      !isOneConstant(LHS.getOperand(0)) || !isNullConstant(LHS.getOperand(1)))
+    return SDValue();
+
+  SDValue Glue = LHS.getOperand(3);
+  SDNode *Cmp = Glue.getNode();
+  switch (Cmp->getOpcode()) {
+  case SPISD::STRICT_CMPFCC:
+  case SPISD::STRICT_CMPFCCS:
+  case SPISD::STRICT_CMPFCC_V9:
+  case SPISD::STRICT_CMPFCCS_V9:
+    break;
+  default:
+    return SDValue();
+  }
+
+  SDValue CmpChain(Cmp, 0);
+  if (!CmpChain.hasOneUse())
+    return SDValue();
+  if (Chain != CmpChain &&
+      (Chain.getOpcode() != ISD::TokenFactor || !Chain.hasOneUse() ||
+       !is_contained(Chain->op_values(), CmpChain)))
+    return SDValue();
+
+  SPCC = LHS.getConstantOperandVal(2);
+  return Glue;
+}
+
 static SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG,
                           const SparcTargetLowering &TLI, bool hasHardQuad,
                           bool isV9, bool is64Bit) {
@@ -2879,10 +2918,29 @@ static SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG,
   SDLoc dl(Op);
   unsigned Opc, SPCC = ~0U;
 
+  // A brcond on the result of a lowered setcc is expanded into
+  // br_cc (and X, 1), 0, setne. When X is a SELECT_[IF]CC of 1 and 0 the and
+  // is a no-op, so look through it.
+  if (CC == ISD::SETNE && isNullConstant(RHS) && LHS.getOpcode() == ISD::AND &&
+      isOneConstant(LHS.getOperand(1)) && LHS.hasOneUse()) {
+    SDValue Sel = LHS.getOperand(0);
+    if ((Sel.getOpcode() == SPISD::SELECT_ICC ||
+         Sel.getOpcode() == SPISD::SELECT_XCC ||
+         Sel.getOpcode() == SPISD::SELECT_FCC) &&
+        isOneConstant(Sel.getOperand(0)) && isNullConstant(Sel.getOperand(1)))
+      LHS = Sel;
+  }
+
   // If this is a br_cc of a "setcc", and if the setcc got lowered into
   // an CMP[IF]CC/SELECT_[IF]CC pair, find the original compared values.
   LookThroughSetCC(LHS, RHS, CC, SPCC);
   assert(LHS.getValueType() == RHS.getValueType());
+
+  // Likewise for a constrained FP compare, branch on the FP condition codes.
+  if (SDValue StrictCmpFlag = LookThroughStrictSetCC(Chain, LHS, RHS, CC, SPCC))
+    return DAG.getNode(isV9 ? SPISD::BRFCC_V9 : SPISD::BRFCC, dl, MVT::Other,
+                       Chain, Dest, DAG.getConstant(SPCC, dl, MVT::i32),
+                       StrictCmpFlag);
 
   // Get the condition flag.
   SDValue CompareFlag;
