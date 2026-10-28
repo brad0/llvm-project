@@ -56,7 +56,7 @@ static Status EnsureFDFlags(int fd, int flags) {
 
 // Register contexts are only implemented for these architectures.
 static llvm::Error CheckArchitectureSupported() {
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__aarch64__) || defined(__i386__) || defined(__x86_64__)
   return llvm::Error::success();
 #else
   return llvm::createStringError(

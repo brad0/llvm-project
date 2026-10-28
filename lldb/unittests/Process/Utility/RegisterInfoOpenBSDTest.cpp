@@ -18,11 +18,14 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include "Register/Arch/lldb-arm64-register-enums.h"
 #include "Register/Arch/lldb-x86-register-enums.h"
+#include "Register/Common/RegisterInfo_arm64.h"
 #include "Register/OpenBSD/RegisterInfoOpenBSD_i386.h"
 #include "Register/OpenBSD/RegisterInfoOpenBSD_x86_64.h"
 
 #include <cstddef>
+#include <optional>
 
 using namespace lldb;
 using namespace lldb_private;
@@ -31,6 +34,14 @@ static std::pair<size_t, size_t> GetRegParams(RegisterInfoInterface &ctx,
                                               uint32_t reg) {
   const RegisterInfo &info = ctx.GetRegisterInfo()[reg];
   return {info.byte_offset, info.byte_size};
+}
+
+[[maybe_unused]] static std::optional<uint32_t>
+FindRegister(RegisterInfoInterface &ctx, llvm::StringRef name) {
+  for (uint32_t i = 0; i < ctx.GetRegisterCount(); ++i)
+    if (name == ctx.GetRegisterInfo()[i].name)
+      return i;
+  return std::nullopt;
 }
 
 #define EXPECT_REG(reg, offset, size)                                          \
@@ -171,3 +182,63 @@ TEST(RegisterInfoOpenBSDTest, i386) {
 }
 
 #endif // defined(__i386__)
+
+#if defined(__aarch64__)
+
+TEST(RegisterInfoOpenBSDTest, arm64) {
+  ArchSpec arch{"aarch64-unknown-openbsd"};
+  // The register sets that NativeRegisterContextOpenBSD_arm64 provides.
+  Flags opt_regsets =
+      RegisterInfo_arm64::eRegsetMaskPAuth | RegisterInfo_arm64::eRegsetMaskTLS;
+  RegisterInfo_arm64 reg_ctx{arch, opt_regsets};
+
+  // struct reg starts with the same layout as RegisterInfo_arm64::GPR, but is
+  // longer because it also holds r_tpidr.
+  for (uint32_t i = 0; i <= 28; ++i)
+    EXPECT_REG(gpr_x0_arm64 + i,
+               offsetof(reg, r_reg) + i * sizeof(reg::r_reg[0]),
+               sizeof(reg::r_reg[0]))
+        << "x" << i;
+  EXPECT_REG(gpr_fp_arm64, offsetof(reg, r_reg) + 29 * sizeof(reg::r_reg[0]),
+             sizeof(reg::r_reg[0]));
+  EXPECT_REG(gpr_lr_arm64, offsetof(reg, r_lr), sizeof(reg::r_lr));
+  EXPECT_REG(gpr_sp_arm64, offsetof(reg, r_sp), sizeof(reg::r_sp));
+  EXPECT_REG(gpr_pc_arm64, offsetof(reg, r_pc), sizeof(reg::r_pc));
+  // cpsr is the low 32 bits of r_spsr.
+  EXPECT_REG(gpr_cpsr_arm64, offsetof(reg, r_spsr), 4u);
+  EXPECT_GE(sizeof(reg), sizeof(RegisterInfo_arm64::GPR));
+
+  // The FP registers follow the GPR struct, and struct fpreg starts with the
+  // same layout as RegisterInfo_arm64::FPU.
+  size_t base_offset = reg_ctx.GetRegisterInfo()[fpu_v0_arm64].byte_offset;
+  EXPECT_EQ(base_offset, sizeof(RegisterInfo_arm64::GPR));
+
+  for (uint32_t i = 0; i < 32; ++i)
+    EXPECT_REG(fpu_v0_arm64 + i,
+               base_offset + offsetof(fpreg, fp_reg) +
+                   i * sizeof(fpreg::fp_reg[0]),
+               sizeof(fpreg::fp_reg[0]))
+        << "v" << i;
+  EXPECT_REG(fpu_fpsr_arm64, base_offset + offsetof(fpreg, fp_sr),
+             sizeof(fpreg::fp_sr));
+  EXPECT_REG(fpu_fpcr_arm64, base_offset + offsetof(fpreg, fp_cr),
+             sizeof(fpreg::fp_cr));
+
+  // PT_PACMASK returns the data mask followed by the code mask.
+  std::optional<uint32_t> data_mask = FindRegister(reg_ctx, "data_mask");
+  std::optional<uint32_t> code_mask = FindRegister(reg_ctx, "code_mask");
+  ASSERT_TRUE(data_mask);
+  ASSERT_TRUE(code_mask);
+  EXPECT_REG(*data_mask, reg_ctx.GetPAuthOffset(), sizeof(register_t));
+  EXPECT_REG(*code_mask, reg_ctx.GetPAuthOffset() + sizeof(register_t),
+             sizeof(register_t));
+
+  // The TLS set has only tpidr, which is r_tpidr in struct reg.
+  std::optional<uint32_t> tpidr = FindRegister(reg_ctx, "tpidr");
+  ASSERT_TRUE(tpidr);
+  EXPECT_TRUE(reg_ctx.IsTLSReg(*tpidr));
+  EXPECT_REG(*tpidr, reg_ctx.GetTLSOffset(), sizeof(reg::r_tpidr));
+  EXPECT_FALSE(FindRegister(reg_ctx, "tpidr2"));
+}
+
+#endif // defined(__aarch64__)
