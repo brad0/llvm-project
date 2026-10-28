@@ -209,6 +209,8 @@ void NativeProcessOpenBSD::MonitorExited(lldb::pid_t pid, WaitStatus status) {
 
   /* Stop Tracking All Threads attached to Process */
   m_threads.clear();
+  m_step_breakpoints.clear();
+  m_threads_stepping_with_breakpoint.clear();
 
   SetExitStatus(status, true);
 
@@ -233,9 +235,23 @@ void NativeProcessOpenBSD::MonitorSIGTRAP(lldb::pid_t pid) {
              "fork reported by pid {0} without a trapped thread", GetID());
   }
 
-  const bool stepped =
+  bool stepped =
       m_step_tid != LLDB_INVALID_THREAD_ID && m_step_tid == m_trapped_tid;
   m_step_tid = LLDB_INVALID_THREAD_ID;
+  // With software single-stepping, another thread can run into one of the
+  // breakpoints put there for the stepping thread. That is not a stop of its
+  // own, so report it without a reason and let lldb step again.
+  bool hit_step_breakpoint = false;
+  auto *trapped_thread =
+      static_cast<NativeThreadOpenBSD *>(GetThreadByID(m_trapped_tid));
+  if (trapped_thread && !m_threads_stepping_with_breakpoint.empty()) {
+    if (stepped)
+      stepped = IsSoftwareStepComplete(*trapped_thread);
+    else
+      hit_step_breakpoint = m_step_breakpoints.count(
+          trapped_thread->GetRegisterContext().GetPC());
+  }
+  RemoveStepBreakpoints();
 
   for (const auto &thread : m_threads) {
     auto &t = static_cast<NativeThreadOpenBSD &>(*thread);
@@ -243,6 +259,8 @@ void NativeProcessOpenBSD::MonitorSIGTRAP(lldb::pid_t pid) {
       t.SetStoppedWithNoReason();
     } else if (stepped) {
       t.SetStoppedByTrace();
+    } else if (hit_step_breakpoint) {
+      t.SetStoppedWithNoReason();
     } else {
       t.SetStoppedByBreakpoint();
       FixupBreakpointPCAsNeeded(t);
@@ -256,6 +274,7 @@ void NativeProcessOpenBSD::MonitorSIGTRAP(lldb::pid_t pid) {
 void NativeProcessOpenBSD::MonitorSignal(lldb::pid_t pid, int signal) {
   m_trapped_tid = GetTrappedThreadID();
   m_step_tid = LLDB_INVALID_THREAD_ID;
+  RemoveStepBreakpoints();
 
   for (const auto &thread : m_threads) {
     auto &t = static_cast<NativeThreadOpenBSD &>(*thread);
@@ -343,22 +362,28 @@ Status NativeProcessOpenBSD::Resume(const ResumeActionList &resume_actions) {
   lldb::pid_t target = GetID();
   int req;
   if (step_thread) {
-#ifdef PT_STEP
     if (step_thread->GetID() != m_trapped_tid)
       return Status::FromErrorStringWithFormat(
           "OpenBSD can only single-step the thread that reported the last "
           "stop (tid %" PRIu64 ")",
           m_trapped_tid);
+#ifdef PT_STEP
     req = PT_STEP;
+#else
+    // Without PT_STEP (e.g. on riscv64), put breakpoints on the possible next
+    // instructions and continue.
+    Status error = SetupSoftwareSingleStepping(*step_thread);
+    if (error.Fail()) {
+      RemoveStepBreakpoints();
+      return error;
+    }
+    req = PT_CONTINUE;
+#endif
     // With the thread ID only the stepping thread runs, which is what lldb
     // wants when the other threads are suspended (e.g. stepping over a
     // breakpoint).  With the process ID the other threads run as well.
     if (run_threads.empty())
       target = step_thread->GetID();
-#else
-    return Status::FromErrorString(
-        "NativeProcessOpenBSD stepping not supported on this platform");
-#endif
   } else if (run_threads.empty()) {
     LLDB_LOG(log, "no threads to resume for pid {0}", GetID());
     return Status();
@@ -377,8 +402,10 @@ Status NativeProcessOpenBSD::Resume(const ResumeActionList &resume_actions) {
   }
 
   Status error = PtraceWrapper(req, target, (void *)1, signal);
-  if (error.Fail())
+  if (error.Fail()) {
+    RemoveStepBreakpoints();
     return error;
+  }
 
   const bool whole_process = target == GetID();
   for (const auto &abs_thread : m_threads) {
@@ -868,6 +895,7 @@ void NativeProcessOpenBSD::MonitorFork(::pid_t child_pid,
   LLDB_LOG(log, "fork, child_pid={0}", child_pid);
 
   auto resume_parent = [&]() {
+    RemoveStepBreakpoints();
     Status error =
         PtraceWrapper(PT_CONTINUE, GetID(), reinterpret_cast<void *>(1), 0);
     if (error.Fail()) {
@@ -890,8 +918,11 @@ void NativeProcessOpenBSD::MonitorFork(::pid_t child_pid,
       child_pid, m_terminal_fd, m_delegate, m_arch, m_main_loop)};
   // The child's ptrace state names this process until the child forks.
   child_process->m_last_fork_pid = GetID();
-  // The child has a copy of our memory, breakpoints included.
+  // The child has a copy of our memory, breakpoints included. Breakpoints
+  // used for software single-stepping are only meant for this process.
   child_process->m_software_breakpoints = m_software_breakpoints;
+  for (lldb::addr_t addr : m_step_breakpoints)
+    child_process->RemoveBreakpoint(addr);
 
   Status error = child_process->RefreshThreads();
   if (error.Fail() || child_process->m_threads.empty() ||
@@ -923,7 +954,30 @@ void NativeProcessOpenBSD::MonitorFork(::pid_t child_pid,
       t.SetStoppedWithNoReason();
   }
   SetCurrentThreadID(parent_thread.GetID());
+  RemoveStepBreakpoints();
   SetState(StateType::eStateStopped, true);
+}
+
+// With software single-stepping, the step is complete once the thread stops
+// on one of the breakpoints put on the possible next instructions; any other
+// SIGTRAP is a breakpoint or trap instruction it ran into.
+bool NativeProcessOpenBSD::IsSoftwareStepComplete(NativeThreadOpenBSD &thread) {
+  auto it = m_threads_stepping_with_breakpoint.find(thread.GetID());
+  if (it == m_threads_stepping_with_breakpoint.end())
+    return false;
+  return llvm::is_contained(it->second, thread.GetRegisterContext().GetPC());
+}
+
+void NativeProcessOpenBSD::RemoveStepBreakpoints() {
+  for (lldb::addr_t addr : m_step_breakpoints) {
+    Status error = RemoveBreakpoint(addr);
+    if (error.Fail())
+      LLDB_LOG(GetLog(POSIXLog::Breakpoints),
+               "pid {0}: removing stepping breakpoint at {1:x} failed: {2}",
+               GetID(), addr, error);
+  }
+  m_step_breakpoints.clear();
+  m_threads_stepping_with_breakpoint.clear();
 }
 
 // Returns the child of the fork() that this stop reports, or 0 if it does not
