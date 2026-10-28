@@ -54,10 +54,14 @@ static Status EnsureFDFlags(int fd, int flags) {
   return Status();
 }
 
-// No architecture has a register context yet.
+// Register contexts are only implemented for these architectures.
 static llvm::Error CheckArchitectureSupported() {
+#if defined(__x86_64__)
+  return llvm::Error::success();
+#else
   return llvm::createStringError(
       "debugging is not supported on this architecture");
+#endif
 }
 
 // Whether kern.global_ptrace allows attaching to processes that are not
