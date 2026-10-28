@@ -53,6 +53,7 @@ private:
   void SetStoppedByBreakpoint();
   void SetStoppedByTrace();
   void SetStoppedByExec();
+  void SetStoppedByFork(lldb::pid_t child_pid, lldb::tid_t child_tid);
   void SetStoppedWithNoReason();
   void SetStopped();
   void SetRunning();
