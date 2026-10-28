@@ -13,7 +13,8 @@
 // which just reports an error and exits on architectures which do
 // not have a backend.
 
-#if !defined(__aarch64__) && !defined(__i386__) && !defined(__x86_64__)
+#if !defined(__aarch64__) && !defined(__i386__) &&                             \
+    !(defined(__riscv) && __riscv_xlen == 64) && !defined(__x86_64__)
 
 #include "Plugins/Process/OpenBSD/NativeRegisterContextOpenBSD.h"
 

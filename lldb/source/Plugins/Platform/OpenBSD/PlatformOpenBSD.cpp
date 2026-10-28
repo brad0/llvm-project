@@ -111,10 +111,10 @@ PlatformOpenBSD::PlatformOpenBSD(bool is_host)
   if (is_host) {
     m_supported_architectures.push_back(HostInfo::GetArchitecture());
   } else {
-    m_supported_architectures =
-        CreateArchList({llvm::Triple::x86_64, llvm::Triple::x86,
-                        llvm::Triple::aarch64, llvm::Triple::arm},
-                       llvm::Triple::OpenBSD);
+    m_supported_architectures = CreateArchList(
+        {llvm::Triple::x86_64, llvm::Triple::x86, llvm::Triple::aarch64,
+         llvm::Triple::arm, llvm::Triple::riscv64},
+        llvm::Triple::OpenBSD);
   }
 }
 
