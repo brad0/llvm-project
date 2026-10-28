@@ -19,6 +19,7 @@
 #include "gtest/gtest.h"
 
 #include "Register/Arch/lldb-x86-register-enums.h"
+#include "Register/OpenBSD/RegisterInfoOpenBSD_i386.h"
 #include "Register/OpenBSD/RegisterInfoOpenBSD_x86_64.h"
 
 #include <cstddef>
@@ -109,3 +110,64 @@ TEST(RegisterInfoOpenBSDTest, x86_64) {
 }
 
 #endif // defined(__x86_64__)
+
+#if defined(__i386__)
+
+#define EXPECT_GPR_I386(regname)                                               \
+  EXPECT_REG(lldb_##regname##_i386, offsetof(reg, r_##regname),                \
+             sizeof(reg::r_##regname))
+#define EXPECT_FPR_I386(regname, offset, size)                                 \
+  EXPECT_REG(lldb_##regname##_i386, base_offset + (offset), size)
+
+TEST(RegisterInfoOpenBSDTest, i386) {
+  ArchSpec arch{"i386-unknown-openbsd"};
+  RegisterInfoOpenBSD_i386 reg_ctx{arch};
+
+  EXPECT_EQ(reg_ctx.GetGPRSize(), sizeof(reg));
+
+  EXPECT_GPR_I386(eax);
+  EXPECT_GPR_I386(ecx);
+  EXPECT_GPR_I386(edx);
+  EXPECT_GPR_I386(ebx);
+  EXPECT_GPR_I386(esp);
+  EXPECT_GPR_I386(ebp);
+  EXPECT_GPR_I386(esi);
+  EXPECT_GPR_I386(edi);
+  EXPECT_GPR_I386(eip);
+  EXPECT_GPR_I386(eflags);
+  EXPECT_GPR_I386(cs);
+  EXPECT_GPR_I386(ss);
+  EXPECT_GPR_I386(ds);
+  EXPECT_GPR_I386(es);
+  EXPECT_GPR_I386(fs);
+  EXPECT_GPR_I386(gs);
+
+  // The FP registers are read with PT_GETXMMREGS, whose struct xmmregs is an
+  // opaque FXSAVE area, so check against the FXSAVE layout. fctrl is its first
+  // field and gives the offset of the whole area.
+  EXPECT_EQ(sizeof(xmmregs), 512u);
+  size_t base_offset = reg_ctx.GetRegisterInfo()[lldb_fctrl_i386].byte_offset;
+
+  EXPECT_FPR_I386(fctrl, 0x00, 2);
+  EXPECT_FPR_I386(fstat, 0x02, 2);
+  // TODO: This is a known bug, the abridged ftag is 8 bits in length.
+  EXPECT_FPR_I386(ftag, 0x04, 2);
+  EXPECT_FPR_I386(fop, 0x06, 2);
+  EXPECT_FPR_I386(fioff, 0x08, 4);
+  EXPECT_FPR_I386(fiseg, 0x0C, 4);
+  EXPECT_FPR_I386(fooff, 0x10, 4);
+  EXPECT_FPR_I386(foseg, 0x14, 4);
+  EXPECT_FPR_I386(mxcsr, 0x18, 4);
+  EXPECT_FPR_I386(mxcsrmask, 0x1C, 4);
+
+  for (uint32_t i = 0; i < 8; ++i) {
+    EXPECT_REG(lldb_st0_i386 + i, base_offset + 0x20 + i * 0x10, 10u)
+        << "st" << i;
+    EXPECT_REG(lldb_mm0_i386 + i, base_offset + 0x20 + i * 0x10, 8u)
+        << "mm" << i;
+    EXPECT_REG(lldb_xmm0_i386 + i, base_offset + 0xA0 + i * 0x10, 16u)
+        << "xmm" << i;
+  }
+}
+
+#endif // defined(__i386__)

@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__)
 
 #include "NativeRegisterContextOpenBSD_x86.h"
 
@@ -19,12 +19,15 @@
 #include "lldb/Utility/RegisterValue.h"
 #include "lldb/Utility/Status.h"
 
+#include "Register/OpenBSD/RegisterInfoOpenBSD_i386.h"
 #include "Register/OpenBSD/RegisterInfoOpenBSD_x86_64.h"
 
 // clang-format off
 #include <sys/types.h>
 #include <sys/ptrace.h>
+#if defined(__x86_64__)
 #include <machine/specialreg.h>
+#endif
 // clang-format on
 
 using namespace lldb_private;
@@ -36,6 +39,8 @@ enum {
   k_xsave_offset_legacy_region = 160,
   k_xsave_offset_invalid = UINT32_MAX,
 };
+
+#if defined(__x86_64__)
 
 // x86 64-bit general purpose registers.
 const uint32_t g_gpr_regnums_x86_64[] = {
@@ -112,6 +117,54 @@ const RegisterSet g_reg_sets[] = {
      g_avx_regnums_x86_64},
 };
 
+#else // defined(__i386__)
+
+// x86 32-bit general purpose registers.
+const uint32_t g_gpr_regnums_i386[] = {
+    lldb_eax_i386,      lldb_ebx_i386,    lldb_ecx_i386, lldb_edx_i386,
+    lldb_edi_i386,      lldb_esi_i386,    lldb_ebp_i386, lldb_esp_i386,
+    lldb_eip_i386,      lldb_eflags_i386, lldb_cs_i386,  lldb_fs_i386,
+    lldb_gs_i386,       lldb_ss_i386,     lldb_ds_i386,  lldb_es_i386,
+    lldb_ax_i386,       lldb_bx_i386,     lldb_cx_i386,  lldb_dx_i386,
+    lldb_di_i386,       lldb_si_i386,     lldb_bp_i386,  lldb_sp_i386,
+    lldb_ah_i386,       lldb_bh_i386,     lldb_ch_i386,  lldb_dh_i386,
+    lldb_al_i386,       lldb_bl_i386,     lldb_cl_i386,  lldb_dl_i386,
+    LLDB_INVALID_REGNUM // register sets need to end with this flag
+};
+static_assert((sizeof(g_gpr_regnums_i386) / sizeof(g_gpr_regnums_i386[0])) -
+                      1 ==
+                  k_num_gpr_registers_i386,
+              "g_gpr_regnums_i386 has wrong number of register infos");
+
+// x86 32-bit floating point registers.
+const uint32_t g_fpu_regnums_i386[] = {
+    lldb_fctrl_i386,    lldb_fstat_i386,     lldb_ftag_i386,  lldb_fop_i386,
+    lldb_fiseg_i386,    lldb_fioff_i386,     lldb_foseg_i386, lldb_fooff_i386,
+    lldb_mxcsr_i386,    lldb_mxcsrmask_i386, lldb_st0_i386,   lldb_st1_i386,
+    lldb_st2_i386,      lldb_st3_i386,       lldb_st4_i386,   lldb_st5_i386,
+    lldb_st6_i386,      lldb_st7_i386,       lldb_mm0_i386,   lldb_mm1_i386,
+    lldb_mm2_i386,      lldb_mm3_i386,       lldb_mm4_i386,   lldb_mm5_i386,
+    lldb_mm6_i386,      lldb_mm7_i386,       lldb_xmm0_i386,  lldb_xmm1_i386,
+    lldb_xmm2_i386,     lldb_xmm3_i386,      lldb_xmm4_i386,  lldb_xmm5_i386,
+    lldb_xmm6_i386,     lldb_xmm7_i386,
+    LLDB_INVALID_REGNUM // register sets need to end with this flag
+};
+static_assert((sizeof(g_fpu_regnums_i386) / sizeof(g_fpu_regnums_i386[0])) -
+                      1 ==
+                  k_num_fpr_registers_i386,
+              "g_fpu_regnums_i386 has wrong number of register infos");
+
+// Register sets for x86 32-bit.  OpenBSD/i386 has no PT_GETXSTATE, so the AVX
+// registers are not available.
+const RegisterSet g_reg_sets[] = {
+    {"General Purpose Registers", "gpr", k_num_gpr_registers_i386,
+     g_gpr_regnums_i386},
+    {"Floating Point Registers", "fpu", k_num_fpr_registers_i386,
+     g_fpu_regnums_i386},
+};
+
+#endif
+
 constexpr uint32_t k_num_register_sets = std::size(g_reg_sets);
 
 } // namespace
@@ -129,7 +182,11 @@ static RegisterInfoInterface *
 CreateRegisterInfoInterface(const ArchSpec &target_arch) {
   // OpenBSD/amd64 cannot run i386 executables, so the register layout always
   // matches the host.
+#if defined(__x86_64__)
   return new RegisterInfoOpenBSD_x86_64(target_arch);
+#else
+  return new RegisterInfoOpenBSD_i386(target_arch);
+#endif
 }
 
 NativeRegisterContextOpenBSD_x86::NativeRegisterContextOpenBSD_x86(
@@ -138,9 +195,15 @@ NativeRegisterContextOpenBSD_x86::NativeRegisterContextOpenBSD_x86(
                                    CreateRegisterInfoInterface(target_arch)),
       m_gpr(), m_fpr(), m_regset_offsets() {
   assert(m_gpr.size() == GetRegisterInfoInterface().GetGPRSize());
+#if defined(__x86_64__)
   static_assert(sizeof(struct fpreg) == sizeof(FXSAVE),
                 "struct fpreg is not an FXSAVE area");
   const uint32_t first_fpr = lldb_fctrl_x86_64;
+#else
+  static_assert(sizeof(struct xmmregs) == sizeof(FXSAVE),
+                "struct xmmregs is not an FXSAVE area");
+  const uint32_t first_fpr = lldb_fctrl_i386;
+#endif
 
   // The RegisterInfo byte offsets describe a UserArea with the FPR area
   // following the GPRs; remember where it starts so that the offsets can be
@@ -190,12 +253,19 @@ NativeRegisterContextOpenBSD_x86::GetRegisterSet(uint32_t set_index) const {
 std::optional<NativeRegisterContextOpenBSD_x86::RegSetKind>
 NativeRegisterContextOpenBSD_x86::GetSetForNativeRegNum(
     uint32_t reg_num) const {
+#if defined(__x86_64__)
   if (reg_num >= k_first_gpr_x86_64 && reg_num <= k_last_gpr_x86_64)
     return GPRegSet;
   if (reg_num >= k_first_fpr_x86_64 && reg_num <= k_last_fpr_x86_64)
     return FPRegSet;
   if (reg_num >= k_first_avx_x86_64 && reg_num <= k_last_avx_x86_64)
     return YMMRegSet;
+#else
+  if (reg_num >= k_first_gpr_i386 && reg_num <= k_last_gpr_i386)
+    return GPRegSet;
+  if (reg_num >= k_first_fpr_i386 && reg_num <= k_last_fpr_i386)
+    return FPRegSet;
+#endif
   return std::nullopt;
 }
 
@@ -205,8 +275,14 @@ Status NativeRegisterContextOpenBSD_x86::ReadRegisterSet(RegSetKind set) {
     return NativeProcessOpenBSD::PtraceWrapper(PT_GETREGS, m_thread.GetID(),
                                                m_gpr.data());
   case FPRegSet:
+#if defined(__x86_64__)
     return NativeProcessOpenBSD::PtraceWrapper(PT_GETFPREGS, m_thread.GetID(),
                                                m_fpr.data());
+#else
+    // On i386 struct fpreg is not an FXSAVE area; PT_GETXMMREGS returns one.
+    return NativeProcessOpenBSD::PtraceWrapper(PT_GETXMMREGS, m_thread.GetID(),
+                                               m_fpr.data());
+#endif
   case YMMRegSet:
 #if defined(PT_GETXSTATE)
     if (m_xsave.empty())
@@ -226,8 +302,13 @@ Status NativeRegisterContextOpenBSD_x86::WriteRegisterSet(RegSetKind set) {
     return NativeProcessOpenBSD::PtraceWrapper(PT_SETREGS, m_thread.GetID(),
                                                m_gpr.data());
   case FPRegSet:
+#if defined(__x86_64__)
     return NativeProcessOpenBSD::PtraceWrapper(PT_SETFPREGS, m_thread.GetID(),
                                                m_fpr.data());
+#else
+    return NativeProcessOpenBSD::PtraceWrapper(PT_SETXMMREGS, m_thread.GetID(),
+                                               m_fpr.data());
+#endif
   case YMMRegSet:
 #if defined(PT_SETXSTATE)
     // ReadRegisterSet() must always be called before WriteRegisterSet().
@@ -402,6 +483,7 @@ NativeRegisterContextOpenBSD_x86::GetOffsetRegSetData(RegSetKind set,
 
 std::optional<NativeRegisterContextOpenBSD_x86::YMMSplitPtr>
 NativeRegisterContextOpenBSD_x86::GetYMMSplitReg(uint32_t reg) {
+#if defined(__x86_64__)
   if (m_xsave_offsets[YMMRegSet] == k_xsave_offset_invalid)
     return std::nullopt;
 
@@ -411,6 +493,9 @@ NativeRegisterContextOpenBSD_x86::GetYMMSplitReg(uint32_t reg) {
   auto *ymm =
       reinterpret_cast<XMMReg *>(m_xsave.data() + m_xsave_offsets[YMMRegSet]);
   return YMMSplitPtr{&xmm[reg_index], &ymm[reg_index]};
+#else
+  return std::nullopt;
+#endif
 }
 
-#endif // defined(__x86_64__)
+#endif // defined(__i386__) || defined(__x86_64__)
