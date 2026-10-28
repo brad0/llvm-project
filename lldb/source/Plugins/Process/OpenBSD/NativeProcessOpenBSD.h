@@ -15,6 +15,7 @@
 
 #include "NativeThreadOpenBSD.h"
 #include "Plugins/Process/POSIX/NativeProcessELF.h"
+#include "Plugins/Process/Utility/NativeProcessSoftwareSingleStep.h"
 
 namespace lldb_private {
 namespace process_openbsd {
@@ -25,7 +26,8 @@ namespace process_openbsd {
 /// for debugging.
 ///
 /// Changes in the inferior process state are broadcasted.
-class NativeProcessOpenBSD : public NativeProcessELF {
+class NativeProcessOpenBSD : public NativeProcessELF,
+                             private NativeProcessSoftwareSingleStep {
 public:
   class Manager : public NativeProcessProtocol::Manager {
   public:
@@ -114,6 +116,8 @@ private:
   void MonitorSIGTRAP(lldb::pid_t pid);
   void MonitorSignal(lldb::pid_t pid, int signal);
   void MonitorFork(::pid_t child_pid, NativeThreadOpenBSD &parent_thread);
+  bool IsSoftwareStepComplete(NativeThreadOpenBSD &thread);
+  void RemoveStepBreakpoints();
 
   Status PopulateMemoryRegionCache();
   void SigchldHandler();
