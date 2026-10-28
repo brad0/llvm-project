@@ -9,6 +9,7 @@
 #ifndef LLDB_SOURCE_PLUGINS_PROCESS_OPENBSD_NATIVEPROCESSOPENBSD_H
 #define LLDB_SOURCE_PLUGINS_PROCESS_OPENBSD_NATIVEPROCESSOPENBSD_H
 
+#include "lldb/Target/MemoryRegionInfo.h"
 #include "lldb/Utility/ArchSpec.h"
 #include "lldb/Utility/FileSpec.h"
 
@@ -51,6 +52,9 @@ public:
 
   Status Kill() override;
 
+  Status GetMemoryRegionInfo(lldb::addr_t load_addr,
+                             MemoryRegionInfo &range_info) override;
+
   Status ReadMemory(const ProcessAddress &addr, void *buf, size_t size,
                     size_t &bytes_read) override;
 
@@ -78,6 +82,8 @@ public:
   llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>>
   GetAuxvData() const override;
 
+  void SetEnabledExtensions(Extension flags) override;
+
   // Interface used by NativeRegisterContext-derived classes.
   static Status PtraceWrapper(int req, lldb::pid_t pid, void *addr = nullptr,
                               int data = 0, int *result = nullptr);
@@ -85,10 +91,15 @@ public:
 private:
   MainLoop::SignalHandleUP m_sigchld_handle;
   ArchSpec m_arch;
+  MainLoop &m_main_loop;
+  LazyBool m_supports_mem_region = eLazyBoolCalculate;
   // Thread that was single-stepped by the last Resume(), if any.
   lldb::tid_t m_step_tid = LLDB_INVALID_THREAD_ID;
   // Thread that reported the last stop.
   lldb::tid_t m_trapped_tid = LLDB_INVALID_THREAD_ID;
+  // The other process of the last fork seen. The kernel keeps reporting the
+  // last fork in the ptrace state until the next one.
+  ::pid_t m_last_fork_pid = 0;
 
   // Private Instance Methods
   NativeProcessOpenBSD(::pid_t pid, int terminal_fd, NativeDelegate &delegate,
@@ -102,12 +113,16 @@ private:
   void MonitorExited(lldb::pid_t pid, WaitStatus status);
   void MonitorSIGTRAP(lldb::pid_t pid);
   void MonitorSignal(lldb::pid_t pid, int signal);
+  void MonitorFork(::pid_t child_pid, NativeThreadOpenBSD &parent_thread);
 
+  Status PopulateMemoryRegionCache();
   void SigchldHandler();
 
   Status Attach();
   Status RefreshThreads();
   lldb::tid_t GetTrappedThreadID();
+  ::pid_t GetForkedChildPID();
+  Status SetForkReporting(bool enable);
 };
 
 } // namespace process_openbsd

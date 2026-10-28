@@ -15,6 +15,7 @@
 #include <util.h>
 
 #include "Plugins/Process/POSIX/ProcessPOSIXLog.h"
+#include "lldb/Host/FileSystem.h"
 #include "lldb/Host/HostProcess.h"
 #include "lldb/Host/common/NativeRegisterContext.h"
 #include "lldb/Host/posix/ProcessLauncherPosixFork.h"
@@ -155,6 +156,8 @@ NativeProcessOpenBSD::Extension
 NativeProcessOpenBSD::Manager::GetSupportedExtensions() const {
   Extension supported =
       Extension::pass_signals | Extension::auxv | Extension::libraries_svr4;
+  // OpenBSD reports fork() but not vfork().
+  supported |= Extension::multiprocess | Extension::fork;
   return supported;
 }
 
@@ -164,7 +167,8 @@ NativeProcessOpenBSD::NativeProcessOpenBSD(::pid_t pid, int terminal_fd,
                                            NativeDelegate &delegate,
                                            const ArchSpec &arch,
                                            MainLoop &mainloop)
-    : NativeProcessELF(pid, terminal_fd, delegate), m_arch(arch) {
+    : NativeProcessELF(pid, terminal_fd, delegate), m_arch(arch),
+      m_main_loop(mainloop) {
   if (m_terminal_fd != -1) {
     Status status = EnsureFDFlags(m_terminal_fd, O_NONBLOCK);
     assert(status.Success());
@@ -214,6 +218,16 @@ void NativeProcessOpenBSD::MonitorSIGTRAP(lldb::pid_t pid) {
   // apart: it is a step only if the thread that trapped is the one that was
   // being stepped.
   m_trapped_tid = GetTrappedThreadID();
+
+  if (::pid_t child_pid = GetForkedChildPID()) {
+    m_step_tid = LLDB_INVALID_THREAD_ID;
+    auto *parent_thread =
+        static_cast<NativeThreadOpenBSD *>(GetThreadByID(m_trapped_tid));
+    if (parent_thread)
+      return MonitorFork(child_pid, *parent_thread);
+    LLDB_LOG(GetLog(POSIXLog::Process),
+             "fork reported by pid {0} without a trapped thread", GetID());
+  }
 
   const bool stepped =
       m_step_tid != LLDB_INVALID_THREAD_ID && m_step_tid == m_trapped_tid;
@@ -445,6 +459,108 @@ Status NativeProcessOpenBSD::Kill() {
   return error;
 }
 
+Status NativeProcessOpenBSD::GetMemoryRegionInfo(lldb::addr_t load_addr,
+                                                 MemoryRegionInfo &range_info) {
+  if (m_supports_mem_region == eLazyBoolNo)
+    return Status::FromErrorString("unsupported");
+
+  Status error = PopulateMemoryRegionCache();
+  if (error.Fail())
+    return error;
+
+  // The cache is sorted by address.
+  for (const auto &entry : m_mem_region_cache) {
+    const MemoryRegionInfo &proc_entry_info = entry.first;
+    // If the target address comes before this entry, indicate distance to
+    // next region.
+    if (load_addr < proc_entry_info.GetRange().GetRangeBase()) {
+      range_info.GetRange().SetRangeBase(load_addr);
+      range_info.GetRange().SetByteSize(
+          proc_entry_info.GetRange().GetRangeBase() - load_addr);
+      range_info.SetReadable(eLazyBoolNo);
+      range_info.SetWritable(eLazyBoolNo);
+      range_info.SetExecutable(eLazyBoolNo);
+      range_info.SetMapped(eLazyBoolNo);
+      return Status();
+    }
+    if (proc_entry_info.GetRange().Contains(load_addr)) {
+      range_info = proc_entry_info;
+      return Status();
+    }
+  }
+
+  // The address is past the last mapping.
+  range_info.GetRange().SetRangeBase(load_addr);
+  range_info.GetRange().SetRangeEnd(LLDB_INVALID_ADDRESS);
+  range_info.SetReadable(eLazyBoolNo);
+  range_info.SetWritable(eLazyBoolNo);
+  range_info.SetExecutable(eLazyBoolNo);
+  range_info.SetMapped(eLazyBoolNo);
+  return Status();
+}
+
+Status NativeProcessOpenBSD::PopulateMemoryRegionCache() {
+  Log *log = GetLog(POSIXLog::Process);
+
+  // The cache is cleared every time the process stops.
+  if (!m_mem_region_cache.empty())
+    return Status();
+
+  // KERN_PROC_VMMAP returns the entries starting at the address passed in the
+  // first entry's kve_start, and ENOMEM if they did not all fit; continue from
+  // the end of the last entry returned.  Only root may read the map of
+  // another process.
+  int mib[3] = {CTL_KERN, KERN_PROC_VMMAP, static_cast<int>(GetID())};
+  std::vector<struct kinfo_vmentry> entries(256);
+  u_long next_start = 0;
+  while (true) {
+    entries[0].kve_start = next_start;
+    size_t len = entries.size() * sizeof(struct kinfo_vmentry);
+    int ret = ::sysctl(mib, 3, entries.data(), &len, nullptr, 0);
+    int saved_errno = errno;
+    if (ret != 0 && saved_errno != ENOMEM) {
+      m_mem_region_cache.clear();
+      m_supports_mem_region = eLazyBoolNo;
+      LLDB_LOG(log, "sysctl(KERN_PROC_VMMAP) failed for pid {0}: {1}", GetID(),
+               llvm::sys::StrError(saved_errno));
+      return Status(saved_errno, eErrorTypePOSIX);
+    }
+
+    size_t count = len / sizeof(struct kinfo_vmentry);
+    for (size_t i = 0; i < count; ++i) {
+      const struct kinfo_vmentry &kve = entries[i];
+      if (kve.kve_etype & KVE_ET_HOLE)
+        continue;
+      MemoryRegionInfo info;
+      info.Clear();
+      info.GetRange().SetRangeBase(kve.kve_start);
+      info.GetRange().SetRangeEnd(kve.kve_end);
+      info.SetMapped(eLazyBoolYes);
+      info.SetReadable(kve.kve_protection & KVE_PROT_READ ? eLazyBoolYes
+                                                          : eLazyBoolNo);
+      info.SetWritable(kve.kve_protection & KVE_PROT_WRITE ? eLazyBoolYes
+                                                           : eLazyBoolNo);
+      info.SetExecutable(kve.kve_protection & KVE_PROT_EXEC ? eLazyBoolYes
+                                                            : eLazyBoolNo);
+      m_mem_region_cache.emplace_back(info, FileSpec());
+    }
+
+    if (ret == 0 || count == 0)
+      break;
+    next_start = entries[count - 1].kve_end;
+  }
+
+  if (m_mem_region_cache.empty()) {
+    m_supports_mem_region = eLazyBoolNo;
+    return Status::FromErrorString("no memory map entries found");
+  }
+
+  LLDB_LOG(log, "read {0} memory region entries from process {1}",
+           m_mem_region_cache.size(), GetID());
+  m_supports_mem_region = eLazyBoolYes;
+  return Status();
+}
+
 llvm::Expected<lldb::addr_t>
 NativeProcessOpenBSD::AllocateMemory(size_t size, uint32_t permissions) {
   return llvm::make_error<UnimplementedError>();
@@ -465,15 +581,51 @@ Status NativeProcessOpenBSD::SetBreakpoint(lldb::addr_t addr, uint32_t size,
     return SetSoftwareBreakpoint(addr, size);
 }
 
+// OpenBSD's memory map (KERN_PROC_VMMAP) carries no file names, so look
+// modules up in the dynamic loader's list of loaded objects instead.
 Status NativeProcessOpenBSD::GetLoadedModuleFileSpec(const char *module_path,
                                                      FileSpec &file_spec) {
-  return Status::FromErrorString("Unimplemented");
+  file_spec.Clear();
+
+  llvm::Expected<std::vector<SVR4LibraryInfo>> libraries =
+      GetLoadedSVR4Libraries();
+  if (!libraries)
+    return Status::FromError(libraries.takeError());
+
+  FileSpec module_file_spec(module_path);
+  FileSystem::Instance().Resolve(module_file_spec);
+
+  for (const SVR4LibraryInfo &library : *libraries) {
+    FileSpec library_file_spec(library.name);
+    if (library_file_spec.GetFilename() == module_file_spec.GetFilename()) {
+      file_spec = library_file_spec;
+      return Status();
+    }
+  }
+  return Status::FromErrorStringWithFormatv(
+      "Module file ({0}) not found in the loaded object list",
+      module_file_spec.GetFilename());
 }
 
 Status
 NativeProcessOpenBSD::GetFileLoadAddress(const llvm::StringRef &file_name,
                                          lldb::addr_t &load_addr) {
-  return Status::FromErrorString("Unimplemented");
+  load_addr = LLDB_INVALID_ADDRESS;
+
+  llvm::Expected<std::vector<SVR4LibraryInfo>> libraries =
+      GetLoadedSVR4Libraries();
+  if (!libraries)
+    return Status::FromError(libraries.takeError());
+
+  FileSpec file(file_name);
+  for (const SVR4LibraryInfo &library : *libraries) {
+    if (FileSpec(library.name) == file) {
+      load_addr = library.base_addr;
+      return Status();
+    }
+  }
+  return Status::FromErrorStringWithFormatv(
+      "No load address found for file {0}", file_name);
 }
 
 void NativeProcessOpenBSD::SigchldHandler() {
@@ -704,6 +856,110 @@ Status NativeProcessOpenBSD::RefreshThreads() {
     SetCurrentThreadID(m_threads.front()->GetID());
 
   return Status();
+}
+
+void NativeProcessOpenBSD::MonitorFork(::pid_t child_pid,
+                                       NativeThreadOpenBSD &parent_thread) {
+  Log *log = GetLog(POSIXLog::Process);
+  LLDB_LOG(log, "fork, child_pid={0}", child_pid);
+
+  auto resume_parent = [&]() {
+    Status error =
+        PtraceWrapper(PT_CONTINUE, GetID(), reinterpret_cast<void *>(1), 0);
+    if (error.Fail()) {
+      LLDB_LOG(log, "unable to resume parent process {0}: {1}", GetID(), error);
+      SetState(StateType::eStateInvalid);
+    }
+  };
+
+  // The child is traced by us from the start, and stops with a SIGTRAP as
+  // soon as it runs.
+  int status;
+  ::pid_t wait_pid =
+      llvm::sys::RetryAfterSignal(-1, ::waitpid, child_pid, &status, 0);
+  if (wait_pid != child_pid || !WIFSTOPPED(status)) {
+    LLDB_LOG(log, "fork child {0} did not stop, not tracking it", child_pid);
+    return resume_parent();
+  }
+
+  std::unique_ptr<NativeProcessOpenBSD> child_process{new NativeProcessOpenBSD(
+      child_pid, m_terminal_fd, m_delegate, m_arch, m_main_loop)};
+  // The child's ptrace state names this process until the child forks.
+  child_process->m_last_fork_pid = GetID();
+  // The child has a copy of our memory, breakpoints included.
+  child_process->m_software_breakpoints = m_software_breakpoints;
+
+  Status error = child_process->RefreshThreads();
+  if (error.Fail() || child_process->m_threads.empty() ||
+      !bool(m_enabled_extensions & Extension::fork)) {
+    LLDB_LOG(log, "not following fork child {0}: {1}", child_pid, error);
+    for (const auto &[addr, bp] : m_software_breakpoints) {
+      size_t bytes_written;
+      child_process->DoWriteMemory(addr, bp.saved_opcodes.data(),
+                                   bp.saved_opcodes.size(), bytes_written);
+    }
+    child_process->Detach();
+    return resume_parent();
+  }
+
+  child_process->SetEnabledExtensions(m_enabled_extensions);
+  child_process->m_trapped_tid = child_process->GetTrappedThreadID();
+  const lldb::tid_t child_tid = child_process->m_trapped_tid;
+  for (const auto &thread : child_process->m_threads)
+    static_cast<NativeThreadOpenBSD &>(*thread).SetStoppedBySignal(SIGSTOP);
+  child_process->SetState(StateType::eStateStopped, false);
+
+  m_delegate.NewSubprocess(this, std::move(child_process));
+
+  for (const auto &thread : m_threads) {
+    auto &t = static_cast<NativeThreadOpenBSD &>(*thread);
+    if (&t == &parent_thread)
+      t.SetStoppedByFork(child_pid, child_tid);
+    else
+      t.SetStoppedWithNoReason();
+  }
+  SetCurrentThreadID(parent_thread.GetID());
+  SetState(StateType::eStateStopped, true);
+}
+
+// Returns the child of the fork() that this stop reports, or 0 if it does not
+// report one.
+::pid_t NativeProcessOpenBSD::GetForkedChildPID() {
+  struct ptrace_state state = {};
+  if (PtraceWrapper(PT_GET_PROCESS_STATE, GetID(), &state, sizeof(state))
+          .Fail())
+    return 0;
+  // The kernel does not clear the report once it has been read, so a fork is
+  // only new if it names another process than the last one.
+  if (state.pe_report_event != PTRACE_FORK ||
+      state.pe_other_pid == m_last_fork_pid)
+    return 0;
+  m_last_fork_pid = state.pe_other_pid;
+  return state.pe_other_pid;
+}
+
+Status NativeProcessOpenBSD::SetForkReporting(bool enable) {
+  ptrace_event_t events = {};
+  Status error =
+      PtraceWrapper(PT_GET_EVENT_MASK, GetID(), &events, sizeof(events));
+  if (error.Fail())
+    return error;
+  if (enable)
+    events.pe_set_event |= PTRACE_FORK;
+  else
+    events.pe_set_event &= ~PTRACE_FORK;
+  return PtraceWrapper(PT_SET_EVENT_MASK, GetID(), &events, sizeof(events));
+}
+
+void NativeProcessOpenBSD::SetEnabledExtensions(Extension flags) {
+  NativeProcessELF::SetEnabledExtensions(flags);
+
+  // Only have the kernel trace fork children when the client follows them.
+  Status error = SetForkReporting(bool(flags & Extension::fork));
+  if (error.Fail())
+    LLDB_LOG(GetLog(POSIXLog::Process),
+             "could not change fork reporting for pid {0}: {1}", GetID(),
+             error);
 }
 
 lldb::tid_t NativeProcessOpenBSD::GetTrappedThreadID() {

@@ -59,6 +59,15 @@ void NativeThreadOpenBSD::SetStoppedByExec() {
   m_stop_info.signo = SIGTRAP;
 }
 
+void NativeThreadOpenBSD::SetStoppedByFork(lldb::pid_t child_pid,
+                                           lldb::tid_t child_tid) {
+  SetStopped();
+  m_stop_info.reason = StopReason::eStopReasonFork;
+  m_stop_info.signo = SIGTRAP;
+  m_stop_info.details.fork.child_pid = child_pid;
+  m_stop_info.details.fork.child_tid = child_tid;
+}
+
 void NativeThreadOpenBSD::SetStoppedWithNoReason() {
   SetStopped();
   m_stop_info.reason = StopReason::eStopReasonNone;
