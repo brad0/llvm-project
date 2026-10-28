@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__)
 
 #ifndef LLDB_SOURCE_PLUGINS_PROCESS_OPENBSD_NATIVEREGISTERCONTEXTOPENBSD_X86_H
 #define LLDB_SOURCE_PLUGINS_PROCESS_OPENBSD_NATIVEREGISTERCONTEXTOPENBSD_X86_H
@@ -84,4 +84,4 @@ private:
 
 #endif // LLDB_SOURCE_PLUGINS_PROCESS_OPENBSD_NATIVEREGISTERCONTEXTOPENBSD_X86_H
 
-#endif // defined(__x86_64__)
+#endif // defined(__i386__) || defined(__x86_64__)
