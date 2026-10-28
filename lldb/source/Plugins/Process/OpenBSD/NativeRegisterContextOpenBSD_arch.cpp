@@ -13,6 +13,8 @@
 // which just reports an error and exits on architectures which do
 // not have a backend.
 
+#if !defined(__x86_64__)
+
 #include "Plugins/Process/OpenBSD/NativeRegisterContextOpenBSD.h"
 
 using namespace lldb_private;
@@ -23,3 +25,5 @@ NativeRegisterContextOpenBSD::CreateHostNativeRegisterContextOpenBSD(
     const ArchSpec &target_arch, NativeThreadProtocol &native_thread) {
   return std::unique_ptr<NativeRegisterContextOpenBSD>{};
 }
+
+#endif
