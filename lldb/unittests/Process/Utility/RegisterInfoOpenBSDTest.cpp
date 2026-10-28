@@ -8,7 +8,8 @@
 
 // Check that the register infos used by NativeProcessOpenBSD match the layout
 // of the structures that OpenBSD's ptrace(2) returns, since the register
-// contexts access registers by their byte_offset into those structures.
+// contexts access registers by their byte_offset into those structures, or
+// on riscv64, by their number and name.
 
 // clang-format off
 #include <sys/types.h>
@@ -19,19 +20,23 @@
 #include "gtest/gtest.h"
 
 #include "Register/Arch/lldb-arm64-register-enums.h"
+#include "Register/Arch/lldb-riscv-register-enums.h"
 #include "Register/Arch/lldb-x86-register-enums.h"
 #include "Register/Common/RegisterInfo_arm64.h"
+#include "Register/Common/RegisterInfo_riscv64.h"
 #include "Register/OpenBSD/RegisterInfoOpenBSD_i386.h"
 #include "Register/OpenBSD/RegisterInfoOpenBSD_x86_64.h"
 
 #include <cstddef>
+#include <iterator>
 #include <optional>
+#include <string>
 
 using namespace lldb;
 using namespace lldb_private;
 
-static std::pair<size_t, size_t> GetRegParams(RegisterInfoInterface &ctx,
-                                              uint32_t reg) {
+[[maybe_unused]] static std::pair<size_t, size_t>
+GetRegParams(RegisterInfoInterface &ctx, uint32_t reg) {
   const RegisterInfo &info = ctx.GetRegisterInfo()[reg];
   return {info.byte_offset, info.byte_size};
 }
@@ -242,3 +247,58 @@ TEST(RegisterInfoOpenBSDTest, arm64) {
 }
 
 #endif // defined(__aarch64__)
+
+#if defined(__riscv) && __riscv_xlen == 64
+
+TEST(RegisterInfoOpenBSDTest, riscv64) {
+  ArchSpec arch{"riscv64-unknown-openbsd"};
+  // NativeRegisterContextOpenBSD_riscv64 always provides the FP registers.
+  RegisterInfo_riscv64 reg_ctx{arch, RegisterInfo_riscv64::eRegsetMaskFP};
+  const RegisterInfo *infos = reg_ctx.GetRegisterInfo();
+  auto name = [&](uint32_t r) { return llvm::StringRef(infos[r].name); };
+
+  // The GPRs are pc, then x1 to x31, then x0.
+  EXPECT_EQ(name(gpr_pc_riscv), "pc");
+  for (uint32_t i = 1; i <= 31; ++i)
+    EXPECT_EQ(llvm::StringRef(infos[gpr_x1_riscv + i - 1].alt_name),
+              "x" + std::to_string(i));
+  EXPECT_EQ(name(gpr_x0_riscv), "zero");
+  for (uint32_t r = gpr_first_riscv; r <= gpr_last_riscv; ++r)
+    EXPECT_EQ(infos[r].byte_size, 8u) << name(r).str();
+
+  // struct reg names its fields after the ABI names, which the register
+  // context maps the x registers onto.
+  EXPECT_EQ(std::size(reg{}.r_t), 7u);
+  EXPECT_EQ(std::size(reg{}.r_s), 12u);
+  EXPECT_EQ(std::size(reg{}.r_a), 8u);
+  EXPECT_EQ(name(gpr_ra_riscv), "ra");
+  EXPECT_EQ(name(gpr_sp_riscv), "sp");
+  EXPECT_EQ(name(gpr_gp_riscv), "gp");
+  EXPECT_EQ(name(gpr_tp_riscv), "tp");
+  for (uint32_t i = 0; i <= 2; ++i)
+    EXPECT_EQ(name(gpr_t0_riscv + i), "t" + std::to_string(i));
+  // s0 is called fp.
+  EXPECT_EQ(name(gpr_fp_riscv), "fp");
+  EXPECT_EQ(name(gpr_s1_riscv), "s1");
+  for (uint32_t i = 0; i <= 7; ++i)
+    EXPECT_EQ(name(gpr_a0_riscv + i), "a" + std::to_string(i));
+  for (uint32_t i = 2; i <= 11; ++i)
+    EXPECT_EQ(name(gpr_s2_riscv + i - 2), "s" + std::to_string(i));
+  for (uint32_t i = 3; i <= 6; ++i)
+    EXPECT_EQ(name(gpr_t3_riscv + i - 3), "t" + std::to_string(i));
+
+  // The FP registers are f0 to f31 in fp_f, then fcsr, which is the low 32
+  // bits of fp_fcsr.
+  EXPECT_EQ(std::size(fpreg{}.fp_f), 32u);
+  for (uint32_t i = 0; i < 32; ++i) {
+    EXPECT_EQ(llvm::StringRef(infos[fpr_f0_riscv + i].alt_name),
+              "f" + std::to_string(i));
+    EXPECT_EQ(infos[fpr_f0_riscv + i].byte_size, sizeof(fpreg::fp_f[0]));
+  }
+  EXPECT_EQ(name(fpr_fcsr_riscv), "fcsr");
+  EXPECT_EQ(infos[fpr_fcsr_riscv].byte_size, 4u);
+  EXPECT_GE(sizeof(fpreg::fp_fcsr), 4u);
+  EXPECT_EQ(reg_ctx.GetRegisterCount(), uint32_t(fpr_last_riscv + 1));
+}
+
+#endif // defined(__riscv) && __riscv_xlen == 64
