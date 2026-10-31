@@ -59,6 +59,8 @@ enum {
   // 1 << 10 unused
   NEEDS_TLSDESC_AUTH = 1 << 11,
   // 1 << 12 unused
+  HAS_MIPS_CALL_RELOC = 1 << 13,
+  HAS_MIPS_NONCALL_RELOC = 1 << 14,
 };
 
 // The base class for real symbol classes.

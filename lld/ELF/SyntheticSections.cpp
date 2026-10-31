@@ -948,7 +948,8 @@ void MipsGotSection::build() {
     for (const std::pair<Symbol *, size_t> &p : got.global) {
       uint64_t offset = p.second * ctx.arg.wordsize;
       if (&got == primGot)
-        addConstant({R_ABS, ctx.target->relativeRel, offset, 0, p.first});
+        addConstant(
+            {RE_MIPS_GOT_STUB, ctx.target->relativeRel, offset, 0, p.first});
       else
         ctx.in.relaDyn->addSymbolReloc(ctx.target->relativeRel, *this, offset,
                                        *p.first);
@@ -960,7 +961,8 @@ void MipsGotSection::build() {
            "Relocation-only entries should only be in the primary GOT");
     for (const std::pair<Symbol *, size_t> &p : got.relocs) {
       uint64_t offset = p.second * ctx.arg.wordsize;
-      addConstant({R_ABS, ctx.target->relativeRel, offset, 0, p.first});
+      addConstant(
+          {RE_MIPS_GOT_STUB, ctx.target->relativeRel, offset, 0, p.first});
     }
 
     // Relocations for "local" entries
@@ -1028,6 +1030,47 @@ void MipsGotSection::writeTo(uint8_t *buf) {
   writeUint(ctx, buf + ctx.arg.wordsize,
             (uint64_t)1 << (ctx.arg.wordsize * 8 - 1));
   ctx.target->relocateAlloc(*this, buf);
+}
+
+MipsStubsSection::MipsStubsSection(Ctx &ctx)
+    : SyntheticSection(ctx, ".MIPS.stubs", SHT_PROGBITS,
+                       SHF_ALLOC | SHF_EXECINSTR, ctx.arg.wordsize) {}
+
+void MipsStubsSection::addSymbols() {
+  // microMIPS stubs are not implemented.
+  if (isMicroMips(ctx))
+    return;
+  for (Symbol *sym : ctx.symtab->getSymbols()) {
+    if (!sym->isPreemptible || !(sym->isUndefined() || sym->isShared()) ||
+        !sym->isFunc() || !sym->hasFlag(HAS_MIPS_CALL_RELOC) ||
+        sym->hasFlag(HAS_MIPS_NONCALL_RELOC) || sym->hasFlag(NEEDS_PLT))
+      continue;
+    if (!sym->isInGot(ctx))
+      continue;
+    indices[sym] = entries.size();
+    entries.push_back(sym);
+  }
+}
+
+std::optional<uint64_t> MipsStubsSection::getStubVA(const Symbol &sym) const {
+  if (!getParent())
+    return std::nullopt;
+  auto it = indices.find(&sym);
+  if (it == indices.end())
+    return std::nullopt;
+  return getVA() + it->second * stubSize;
+}
+
+void MipsStubsSection::finalizeContents() {
+  stubSize = ctx.in.dynSymTab->getNumSymbols() > 0x10000 ? stubBigSize
+                                                         : stubNormalSize;
+}
+
+void MipsStubsSection::writeTo(uint8_t *buf) {
+  for (const Symbol *sym : entries) {
+    writeMipsStub(ctx, buf, sym->dynsymIndex, stubSize == stubBigSize);
+    buf += stubSize;
+  }
 }
 
 // On PowerPC the .plt section is used to hold the table of function addresses
@@ -2182,6 +2225,9 @@ template <class ELFT> void SymbolTableSection<ELFT>::writeTo(uint8_t *buf) {
       Symbol *sym = ent.sym;
       if (sym->isInPlt(ctx) && sym->hasFlag(NEEDS_COPY))
         eSym->st_other |= STO_MIPS_PLT;
+      if (ctx.in.mipsStubs)
+        if (std::optional<uint64_t> va = ctx.in.mipsStubs->getStubVA(*sym))
+          eSym->st_value = *va;
       if (isMicroMips(ctx)) {
         // We already set the less-significant bit for symbols
         // marked by the `STO_MIPS_MICROMIPS` flag and for microMIPS PLT
@@ -4654,6 +4700,11 @@ template <class ELFT> void elf::createSyntheticSections(Ctx &ctx) {
   add(*ctx.in.plt);
   ctx.in.iplt = std::make_unique<IpltSection>(ctx);
   add(*ctx.in.iplt);
+
+  if (ctx.arg.emachine == EM_MIPS && !ctx.arg.relocatable && ctx.hasDynsym) {
+    ctx.in.mipsStubs = std::make_unique<MipsStubsSection>(ctx);
+    add(*ctx.in.mipsStubs);
+  }
 
   if (ctx.arg.andFeatures || ctx.aarch64PauthAbiCoreInfo) {
     ctx.in.gnuProperty = std::make_unique<GnuPropertySection>(ctx);

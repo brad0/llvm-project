@@ -1181,6 +1181,8 @@ void RelocScan::scanEhSection(EhInputSection &s) {
     if (sym->isUndefined() &&
         maybeReportUndefined(cast<Undefined>(*sym), offset))
       continue;
+    if (ctx.arg.emachine == EM_MIPS)
+      sym->setFlags(HAS_MIPS_NONCALL_RELOC);
     process(r.expr, r.type, offset, *sym, r.addend);
   }
 }

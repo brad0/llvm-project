@@ -889,6 +889,13 @@ uint64_t InputSectionBase::getRelocTargetVA(Ctx &ctx, const Relocation &r,
     return ctx.in.mipsGot->getVA() +
            ctx.in.mipsGot->getPageEntryOffset(file, *r.sym, a) -
            ctx.in.mipsGot->getGp(file);
+  case RE_MIPS_GOT_STUB:
+    // A global entry in the primary GOT. If the symbol has a lazy binding
+    // stub, the entry initially points to the stub.
+    if (ctx.in.mipsStubs)
+      if (std::optional<uint64_t> va = ctx.in.mipsStubs->getStubVA(*r.sym))
+        return *va + a;
+    return r.sym->getVA(ctx, a);
   case RE_MIPS_OSEC_LOCAL_PAGE:
     // This is used by the MIPS multi-GOT implementation. It relocates
     // addresses of 64kb pages that lie inside the output section that sym is

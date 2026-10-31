@@ -1129,6 +1129,25 @@ private:
   size_t shardOffsets[numShards];
 };
 
+class MipsStubsSection final : public SyntheticSection {
+  static constexpr size_t stubNormalSize = 16;
+  static constexpr size_t stubBigSize = 20;
+
+public:
+  MipsStubsSection(Ctx &);
+  void addSymbols();
+  std::optional<uint64_t> getStubVA(const Symbol &sym) const;
+  size_t getSize() const override { return entries.size() * stubSize; }
+  bool isNeeded() const override { return !entries.empty(); }
+  void finalizeContents() override;
+  void writeTo(uint8_t *buf) override;
+
+private:
+  SmallVector<const Symbol *, 0> entries;
+  llvm::DenseMap<const Symbol *, uint32_t> indices;
+  size_t stubSize = stubNormalSize;
+};
+
 // Representation of the combined .ARM.Exidx input sections. We process these
 // as a SyntheticSection like .eh_frame as we need to merge duplicate entries
 // and add terminating sentinel entries.

@@ -2038,6 +2038,8 @@ template <class ELFT> void Writer<ELFT>::finalizeSections() {
 
   if (ctx.in.mipsGot)
     ctx.in.mipsGot->build();
+  if (ctx.in.mipsStubs)
+    ctx.in.mipsStubs->addSymbols();
 
   removeUnusedSyntheticSections(ctx);
   ctx.script->diagnoseOrphanHandling();
@@ -2139,6 +2141,8 @@ template <class ELFT> void Writer<ELFT>::finalizeSections() {
     finalizeSynthetic(ctx, ctx.in.verSym.get());
     finalizeSynthetic(ctx, ctx.in.verNeed.get());
     finalizeSynthetic(ctx, ctx.in.dynamic.get());
+
+    finalizeSynthetic(ctx, ctx.in.mipsStubs.get());
   }
 
   if (!ctx.script->hasSectionsCommand && !ctx.arg.relocatable)
