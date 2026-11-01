@@ -150,6 +150,18 @@ macro(test_target_arch arch def)
   endif()
 endmacro()
 
+# test_multilib_target_arch(<pointer size> <arch> <def> <target flags...>)
+# Wrapper around test_target_arch for the 32/64-bit pairs selected with
+# -m32/-m64. OpenBSD does not support multilib, so there only the arch
+# matching the host pointer size is tested. A compile-only check cannot
+# detect this, as the compiler can still target the other arch.
+macro(test_multilib_target_arch ptr_size arch def)
+  if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "OpenBSD" OR
+     CMAKE_SIZEOF_VOID_P EQUAL ${ptr_size})
+    test_target_arch(${arch} "${def}" ${ARGN})
+  endif()
+endmacro()
+
 macro(detect_target_arch)
   check_symbol_exists(__AMDGPU__ "" __AMDGPU)
   check_symbol_exists(__arm__ "" __ARM)
