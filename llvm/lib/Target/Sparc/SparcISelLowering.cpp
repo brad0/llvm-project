@@ -2820,18 +2820,35 @@ static SDValue LowerFP_TO_UINT(SDValue Op, SelectionDAG &DAG,
 static SDValue LowerUINT_TO_FP(SDValue Op, SelectionDAG &DAG,
                                const SparcTargetLowering &TLI,
                                bool hasHardQuad) {
-  EVT OpVT = Op.getOperand(Op->isStrictFPOpcode() ? 1 : 0).getValueType();
+  SDLoc dl(Op);
+  EVT VT = Op.getValueType();
+  bool IsStrict = Op->isStrictFPOpcode();
+  SDValue Src = Op.getOperand(IsStrict ? 1 : 0);
+  EVT OpVT = Src.getValueType();
   assert(OpVT == MVT::i32 || OpVT == MVT::i64);
 
-  // Expand if it does not involve f128 or the target has support for
-  // quad floating point instructions and the operand type is legal.
-  if (Op.getValueType() != MVT::f128 || (hasHardQuad && TLI.isTypeLegal(OpVT)))
-    return SDValue();
+  // Expand f128 operations to fp128 ABI calls if there is no hardware quad
+  // support or the operand type is illegal.
+  if (VT == MVT::f128 && (!hasHardQuad || !TLI.isTypeLegal(OpVT)))
+    return TLI.LowerF128Op(Op, DAG,
+                           OpVT == MVT::i32 ? RTLIB::UINTTOFP_I32_F128
+                                            : RTLIB::UINTTOFP_I64_F128,
+                           1);
 
-  return TLI.LowerF128Op(Op, DAG,
-                         OpVT == MVT::i32 ? RTLIB::UINTTOFP_I32_F128
-                                          : RTLIB::UINTTOFP_I64_F128,
-                         1);
+  // When i64 is legal, zero-extend an i32 operand and use the signed 64-bit
+  // conversion (fxtos/fxtod/fxtoq). The generic i32 expansion builds the
+  // double 0x43300000:x and subtracts 2^52, which yields -0.0 for an input of
+  // 0 when rounding toward negative infinity.
+  if (OpVT == MVT::i32 && TLI.isTypeLegal(MVT::i64)) {
+    SDValue Ext = DAG.getNode(ISD::ZERO_EXTEND, dl, MVT::i64, Src);
+    if (IsStrict)
+      return DAG.getNode(ISD::STRICT_SINT_TO_FP, dl, {VT, MVT::Other},
+                         {Op.getOperand(0), Ext});
+    return DAG.getNode(ISD::SINT_TO_FP, dl, VT, Ext);
+  }
+
+  // Otherwise, use the generic expansion.
+  return SDValue();
 }
 
 // Lower a constrained FP compare. The quiet form uses fcmp and the signaling
