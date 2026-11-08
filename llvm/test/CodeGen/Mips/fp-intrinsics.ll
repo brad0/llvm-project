@@ -56,8 +56,10 @@ define i32 @fptosi_f32(float %x) #0 {
 
 define i32 @fptoui_f32(float %x) #0 {
 ; CHECK-LABEL: fptoui_f32:
+; CHECK: sub.s
 ; CHECK: trunc.w.s
-; CHECK: trunc.w.s
+; CHECK-NOT: trunc.w.s
+; CHECK: .end fptoui_f32
   %val = call i32 @llvm.experimental.constrained.fptoui.i32.f32(float %x, metadata !"fpexcept.strict") #0
   ret i32 %val
 }
@@ -363,8 +365,10 @@ define i32 @fptosi_f64(double %x) #0 {
 
 define i32 @fptoui_f64(double %x) #0 {
 ; CHECK-LABEL: fptoui_f64:
-; CHECK: trunc.w.d 
+; CHECK: sub.d
 ; CHECK: trunc.w.d
+; CHECK-NOT: trunc.w.d
+; CHECK: .end fptoui_f64
   %val = call i32 @llvm.experimental.constrained.fptoui.i32.f64(double %x, metadata !"fpexcept.strict") #0
   ret i32 %val
 }

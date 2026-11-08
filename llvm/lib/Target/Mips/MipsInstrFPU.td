@@ -67,6 +67,13 @@ def MipsFPBrcond : SDNode<"MipsISD::FPBrcond", SDT_MipsFPBrcond,
 
 // FP-to-int truncation node.
 def MipsTruncIntFP : SDNode<"MipsISD::TruncIntFP", SDT_MipsTruncIntFP>;
+def MipsStrictTruncIntFP : SDNode<"MipsISD::STRICT_TruncIntFP",
+                                  SDT_MipsTruncIntFP, [SDNPHasChain]> {
+  let IsStrictFP = true;
+}
+def MipsAnyTruncIntFP : PatFrags<(ops node:$src),
+                                 [(MipsStrictTruncIntFP node:$src),
+                                  (MipsTruncIntFP node:$src)]>;
 
 def MipsBuildPairF64 : SDNode<"MipsISD::BuildPairF64", SDT_MipsBuildPairF64>;
 def : GINodeEquiv<G_MERGE_VALUES, MipsBuildPairF64>;
@@ -1052,10 +1059,10 @@ def : MipsPat<(f32 fpimm0neg), (FNEG_S (MTC1 R0))>, ISA_MIPS1;
 def : MipsPat<(f32 (any_sint_to_fp GPR32Opnd:$src)),
               (PseudoCVT_S_W GPR32Opnd:$src)>;
 let Predicates = [IsR5900] in {
-  def : MipsPat<(MipsTruncIntFP FGR32Opnd:$src),
+  def : MipsPat<(MipsAnyTruncIntFP FGR32Opnd:$src),
                 (CVT_W_S FGR32Opnd:$src)>, ISA_MIPS1;
 }
-def : MipsPat<(MipsTruncIntFP FGR32Opnd:$src),
+def : MipsPat<(MipsAnyTruncIntFP FGR32Opnd:$src),
               (TRUNC_W_S FGR32Opnd:$src)>, ISA_MIPS1;
 
 def : MipsPat<(MipsMTC1_D64 GPR32Opnd:$src),
@@ -1072,7 +1079,7 @@ def : MipsPat<(setlt (i32 (bitconvert (f32 (fpround FGR64Opnd:$src)))), 0),
 def : MipsPat<(f64 (any_sint_to_fp GPR32Opnd:$src)),
               (PseudoCVT_D32_W GPR32Opnd:$src)>, FGR_32;
 let AdditionalPredicates = [NotInMicroMips] in {
-  def : MipsPat<(MipsTruncIntFP AFGR64Opnd:$src),
+  def : MipsPat<(MipsAnyTruncIntFP AFGR64Opnd:$src),
                 (TRUNC_W_D32 AFGR64Opnd:$src)>, ISA_MIPS2, FGR_32;
   def : MipsPat<(f32 (any_fpround AFGR64Opnd:$src)),
                 (CVT_S_D32 AFGR64Opnd:$src)>, ISA_MIPS1, FGR_32;
@@ -1097,11 +1104,11 @@ def : MipsPat<(f32 (any_sint_to_fp GPR64Opnd:$src)),
 def : MipsPat<(f64 (any_sint_to_fp GPR64Opnd:$src)),
               (PseudoCVT_D64_L GPR64Opnd:$src)>, FGR_64;
 
-def : MipsPat<(MipsTruncIntFP FGR64Opnd:$src),
+def : MipsPat<(MipsAnyTruncIntFP FGR64Opnd:$src),
               (TRUNC_W_D64 FGR64Opnd:$src)>, ISA_MIPS2, FGR_64;
-def : MipsPat<(MipsTruncIntFP FGR32Opnd:$src),
+def : MipsPat<(MipsAnyTruncIntFP FGR32Opnd:$src),
               (TRUNC_L_S FGR32Opnd:$src)>, ISA_MIPS2, FGR_64;
-def : MipsPat<(MipsTruncIntFP FGR64Opnd:$src),
+def : MipsPat<(MipsAnyTruncIntFP FGR64Opnd:$src),
               (TRUNC_L_D64 FGR64Opnd:$src)>, ISA_MIPS2, FGR_64;
 
 let AdditionalPredicates = [NotInMicroMips] in {
