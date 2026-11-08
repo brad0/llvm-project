@@ -632,17 +632,16 @@ define double @fpext_f32(float %x) #0 {
 
 define float @sitofp_f32_i32(i32 %x) #0 {
 ; CHECK-LABEL: sitofp_f32_i32:
-; CHECK: ldc1
-; CHECK: ldc1
-; CHECK: cvt.s.d
+; CHECK: mtc1 $4, $f0
+; CHECK: cvt.s.w $f0, $f0
   %val = call float @llvm.experimental.constrained.sitofp.f32.i32(i32 %x, metadata !"round.tonearest", metadata !"fpexcept.strict") #0
   ret float %val
 }
 
 define double @sitofp_f64_i32(i32 %x) #0 {
 ; CHECK-LABEL: sitofp_f64_i32:
-; CHECK: ldc1
-; CHECK: ldc1
+; CHECK: mtc1 $4, $f0
+; CHECK: cvt.d.w $f0, $f0
   %val = call double @llvm.experimental.constrained.sitofp.f64.i32(i32 %x, metadata !"round.tonearest", metadata !"fpexcept.strict") #0
   ret double %val
 }
