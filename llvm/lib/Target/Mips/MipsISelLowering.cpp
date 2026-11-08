@@ -254,6 +254,12 @@ MipsTargetLowering::MipsTargetLowering(const MipsTargetMachine &TM,
     setOperationAction(ISD::FMAXNUM_IEEE, MVT::f64, Legal);
     setOperationAction(ISD::FMINNUM, MVT::f64, Legal);
     setOperationAction(ISD::FMAXNUM, MVT::f64, Legal);
+    if (!Subtarget.inMicroMipsMode()) {
+      setOperationAction(ISD::STRICT_FMINNUM, MVT::f32, Legal);
+      setOperationAction(ISD::STRICT_FMAXNUM, MVT::f32, Legal);
+      setOperationAction(ISD::STRICT_FMINNUM, MVT::f64, Legal);
+      setOperationAction(ISD::STRICT_FMAXNUM, MVT::f64, Legal);
+    }
     setOperationAction(ISD::IS_FPCLASS, MVT::f32, Legal);
     setOperationAction(ISD::IS_FPCLASS, MVT::f64, Legal);
     setOperationAction(ISD::FCANONICALIZE, MVT::f32, Legal);
@@ -444,6 +450,10 @@ MipsTargetLowering::MipsTargetLowering(const MipsTargetMachine &TM,
   MaxStoresPerMemcpy = 16;
 
   isMicroMips = Subtarget.inMicroMipsMode();
+
+  // Constrained FP operations are lowered explicitly instead of being mutated
+  // to the non-strict ones.
+  IsStrictFPEnabled = true;
 }
 
 const MipsTargetLowering *
