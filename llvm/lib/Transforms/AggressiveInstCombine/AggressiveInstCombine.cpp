@@ -1017,6 +1017,21 @@ static bool tryToRecognizeTableBasedCttz(LoadInst *LI, Type *AccessType,
   return true;
 }
 
+/// Return true if the target can compute a ctpop of \p Ty without expanding
+/// it. A popcount of a type split across several registers is the sum of the
+/// popcounts of the parts, so ask about one legal part.
+static bool isCtpopCheap(const TargetTransformInfo &TTI, Type *Ty) {
+  unsigned NumParts = TTI.getNumberOfParts(Ty);
+  if (NumParts == 0)
+    return false;
+  unsigned PartBits = divideCeil(Ty->getIntegerBitWidth(), NumParts);
+  Type *PartTy = IntegerType::get(Ty->getContext(), PartBits);
+  IntrinsicCostAttributes Attrs(Intrinsic::ctpop, PartTy, {PartTy});
+  return TTI.getIntrinsicInstrCost(Attrs,
+                                   TargetTransformInfo::TCK_SizeAndLatency) <
+         TargetTransformInfo::TCC_Expensive;
+}
+
 // Recognise ctpop table lookups:
 //
 // %gep = getelementptr [256 x i8], ptr @ctpop.table, i32 0, i8 %x
@@ -1030,8 +1045,12 @@ static bool tryToRecognizeTableBasedCtpop(LoadInst *LI, Type *AccessType,
                                           const TargetTransformInfo &TTI) {
   Type *IdxTy = GepIdx->getType();
   unsigned IdxBits = IdxTy->getIntegerBitWidth();
-  if (!LI->isSimple() || !isPowerOf2_32(IdxBits) ||
-      TTI.getPopcntSupport(IdxBits) != TargetTransformInfo::PSK_FastHardware)
+  if (!LI->isSimple() || !isPowerOf2_32(IdxBits))
+    return false;
+
+  // Only replace the table lookup if the target can do the popcount without
+  // expanding it.
+  if (!isCtpopCheap(TTI, IdxTy))
     return false;
 
   uint64_t TableSize = DL.getTypeAllocSize(GVTable->getValueType());

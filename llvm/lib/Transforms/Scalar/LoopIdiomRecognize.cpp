@@ -2899,14 +2899,26 @@ bool LoopIdiomRecognize::recognizeShiftUntilLessThan() {
   return true;
 }
 
+/// Return true if the target can compute a ctpop of \p Ty without expanding
+/// it. A popcount of a type split across several registers is the sum of the
+/// popcounts of the parts, so ask about one legal part.
+static bool isCtpopCheap(const TargetTransformInfo &TTI, Type *Ty) {
+  unsigned NumParts = TTI.getNumberOfParts(Ty);
+  if (NumParts == 0)
+    return false;
+  unsigned PartBits = divideCeil(Ty->getIntegerBitWidth(), NumParts);
+  Type *PartTy = IntegerType::get(Ty->getContext(), PartBits);
+  IntrinsicCostAttributes Attrs(Intrinsic::ctpop, PartTy, {PartTy});
+  return TTI.getIntrinsicInstrCost(Attrs,
+                                   TargetTransformInfo::TCK_SizeAndLatency) <
+         TargetTransformInfo::TCC_Expensive;
+}
+
 /// Recognizes a population count idiom in a non-countable loop.
 ///
 /// If detected, transforms the relevant code to issue the popcount intrinsic
 /// function call, and returns true; otherwise, returns false.
 bool LoopIdiomRecognize::recognizePopcount() {
-  if (TTI->getPopcntSupport(32) != TargetTransformInfo::PSK_FastHardware)
-    return false;
-
   // Counting population are usually conducted by few arithmetic instructions.
   // Such instructions can be easily "absorbed" by vacant slots in a
   // non-compact loop. Therefore, recognizing popcount idiom only makes sense
@@ -2943,6 +2955,11 @@ bool LoopIdiomRecognize::recognizePopcount() {
   PHINode *CntPhi;
   Value *Val;
   if (!detectPopcountIdiom(CurLoop, PreCondBB, CntInst, CntPhi, Val))
+    return false;
+
+  // The loop runs once per set bit, so only replace it if the target can do
+  // the popcount without expanding it.
+  if (!isCtpopCheap(*TTI, Val->getType()))
     return false;
 
   transformLoopToPopcount(PreCondBB, CntInst, CntPhi, Val);
