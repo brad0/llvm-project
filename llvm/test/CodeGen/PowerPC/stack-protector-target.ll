@@ -38,8 +38,8 @@ define void @func() sspreq nounwind {
 ; OPENBSD64-NEXT:    mflr 0
 ; OPENBSD64-NEXT:    std 30, -16(1) # 8-byte Folded Spill
 ; OPENBSD64-NEXT:    stdu 1, -64(1)
-; OPENBSD64-NEXT:    std 0, 80(1)
 ; OPENBSD64-NEXT:    addis 30, 2, __guard_local@toc@ha
+; OPENBSD64-NEXT:    std 0, 80(1)
 ; OPENBSD64-NEXT:    ld 3, __guard_local@toc@l(30)
 ; OPENBSD64-NEXT:    std 3, 40(1)
 ; OPENBSD64-NEXT:    addi 3, 1, 36
@@ -52,8 +52,8 @@ define void @func() sspreq nounwind {
 ; OPENBSD64-NEXT:  # %bb.1: # %SP_return
 ; OPENBSD64-NEXT:    addi 1, 1, 64
 ; OPENBSD64-NEXT:    ld 0, 16(1)
-; OPENBSD64-NEXT:    mtlr 0
 ; OPENBSD64-NEXT:    ld 30, -16(1) # 8-byte Folded Reload
+; OPENBSD64-NEXT:    mtlr 0
 ; OPENBSD64-NEXT:    blr
 ; OPENBSD64-NEXT:  .LBB0_2: # %CallStackCheckFailBlk
 ; OPENBSD64-NEXT:    addis 3, 2, .LSSH@toc@ha
