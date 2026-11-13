@@ -106,8 +106,11 @@ StringRef getNormalizedPPCTargetCPU(const Triple &T, StringRef CPUName) {
   }
 
   // LLVM may default to generating code for the native CPU, but, like gcc, we
-  // default to a more generic option for each architecture. (except on AIX)
+  // default to a more generic option for each architecture. (except on AIX
+  // and OpenBSD/powerpc64)
   if (T.isOSAIX())
+    return "pwr7";
+  else if (T.isOSOpenBSD() && T.getArch() == Triple::ppc64)
     return "pwr7";
   else if (T.getArch() == Triple::ppc64le)
     return "ppc64le";

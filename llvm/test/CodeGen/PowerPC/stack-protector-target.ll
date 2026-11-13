@@ -52,8 +52,8 @@ define void @func() sspreq nounwind {
 ; OPENBSD64-NEXT:  # %bb.1: # %SP_return
 ; OPENBSD64-NEXT:    addi 1, 1, 64
 ; OPENBSD64-NEXT:    ld 0, 16(1)
-; OPENBSD64-NEXT:    mtlr 0
 ; OPENBSD64-NEXT:    ld 30, -16(1) # 8-byte Folded Reload
+; OPENBSD64-NEXT:    mtlr 0
 ; OPENBSD64-NEXT:    blr
 ; OPENBSD64-NEXT:  .LBB0_2: # %CallStackCheckFailBlk
 ; OPENBSD64-NEXT:    addis 3, 2, .LSSH@toc@ha

@@ -41,5 +41,10 @@
 //
 // GENERIC: "-target-cpu" "ppc64"
 
+/// OpenBSD/powerpc64 defaults to POWER7.
+// RUN: %clang -### -c --target=powerpc64-unknown-openbsd %s 2>&1 | FileCheck %s --check-prefix=OPENBSD
+// RUN: %clang -### -c --target=powerpc64-unknown-openbsd %s -mcpu=generic 2>&1 | FileCheck %s --check-prefix=OPENBSD
+// OPENBSD: "-target-cpu" "pwr7"
+
 // RUN: not %clang -### -c --target=powerpc64 %s -march=generic 2>&1 | FileCheck --check-prefix=MARCH %s
 // MARCH: error: unsupported option '-march=' for target 'powerpc64'
