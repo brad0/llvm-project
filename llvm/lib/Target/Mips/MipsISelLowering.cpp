@@ -3497,13 +3497,17 @@ MipsTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   setTypeIdForCallsiteInfo(CB, MF, CSInfo);
 
   // Check if it's really possible to do a tail call.
-  // For non-musttail calls, restrict to functions that won't require $gp
-  // restoration. In PIC mode, calling external functions via tail call can
-  // cause issues with $gp register handling (see D24763).
+  // In PIC code, a call to a preemptible function may go through a lazy
+  // binding stub, which needs $gp to point to the caller's GOT. The N32 and
+  // N64 ABIs make $gp callee-saved, so the epilogue restores $gp before the
+  // tail call and the stub would see the wrong GOT. Only allow tail calls to
+  // functions that bind locally in that case. O32 has $gp call-clobbered, so
+  // $gp still points to the caller's GOT when the stub runs.
   bool IsMustTail = CLI.CB && CLI.CB->isMustTailCall();
   bool CalleeIsLocal = true;
-  if (GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee)) {
-    const GlobalValue *GV = G->getGlobal();
+  GlobalAddressSDNode *CalleeG = dyn_cast<GlobalAddressSDNode>(Callee);
+  if (CalleeG && IsPIC && !ABI.IsO32()) {
+    const GlobalValue *GV = CalleeG->getGlobal();
     bool HasLocalLinkage = GV->hasLocalLinkage() || GV->hasPrivateLinkage();
     bool HasHiddenVisibility =
         GV->hasHiddenVisibility() || GV->hasProtectedVisibility();

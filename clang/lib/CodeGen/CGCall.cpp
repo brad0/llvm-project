@@ -6588,8 +6588,13 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
       if (IsMIPS) {
         if (HasMips16)
           CGM.getDiags().Report(Loc, diag::err_mips_impossible_musttail) << 0;
-        else if (const auto *FD = dyn_cast_or_null<FunctionDecl>(TargetDecl))
-          CGM.addUndefinedGlobalForTailCall({FD, Loc});
+        else if (const auto *FD = dyn_cast_or_null<FunctionDecl>(TargetDecl)) {
+          // The N32 and N64 ABIs make $gp callee-saved, so PIC code can only
+          // tail call functions that bind locally. O32 has no such limit.
+          if (CGM.getCodeGenOpts().RelocationModel == llvm::Reloc::PIC_ &&
+              getTarget().getABI() != "o32")
+            CGM.addUndefinedGlobalForTailCall({FD, Loc});
+        }
       }
       Call->setTailCallKind(llvm::CallInst::TCK_MustTail);
     }

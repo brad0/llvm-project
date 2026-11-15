@@ -382,7 +382,8 @@ def err_ppc_impossible_musttail: Error<
 def err_mips_impossible_musttail: Error<
   "'musttail' attribute for this call is impossible because %select{"
   "the MIPS16 ABI does not support tail calls|"
-  "calls outside the current linkage unit cannot be tail called on MIPS}0"
+  "calls to preemptible functions cannot be tail called in MIPS N32/N64 PIC "
+  "code}0"
   >;
 def err_aix_musttail_unsupported: Error<
   "'musttail' attribute is not supported on AIX">;

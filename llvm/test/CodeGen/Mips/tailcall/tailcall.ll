@@ -22,7 +22,7 @@
 ; RUN: llc -mtriple=mips64el -relocation-model=pic -mcpu=mips64r2 -verify-machineinstrs \
 ; RUN:     -mips-tail-calls=1 < %s | FileCheck %s -check-prefix=PIC64
 ; RUN: llc -mtriple=mips64el -relocation-model=pic -mcpu=mips64r6 -verify-machineinstrs \
-; RUN:     -mips-tail-calls=1 < %s | FileCheck %s -check-prefix=STATIC64
+; RUN:     -mips-tail-calls=1 < %s | FileCheck %s -check-prefixes=ALL,PIC64R6
 
 ; RUN: llc -mtriple=mipsel -relocation-model=pic -mcpu=mips32r6 -mattr=+micromips -verify-machineinstrs \
 ; RUN:      -mips-tail-calls=1 < %s | FileCheck %s -check-prefixes=ALL,PIC32MMR6
@@ -43,14 +43,15 @@
 define i32 @caller1(i32 %a0) nounwind {
 entry:
 ; ALL-LABEL: caller1:
-; PIC32: jalr $25
-; PIC32MM: jalrs16 $25
-; PIC32MMR6: jalr $25
-; PIC32R6: jalr $25
-; STATIC32: jal
-; STATIC32MMR6: balc
-; N64: jalr $25
-; N64R6: jalr $25
+; PIC32: jr $25
+; PIC32R6: jr $25
+; PIC32MM: jr $25
+; PIC32MMR6: jrc $25
+; STATIC32: j callee1
+; STATIC32MMR6: bc callee1
+; PIC64: jalr $25
+; PIC64R6: jalr $25
+; STATIC64: j callee1
 ; PIC16: jalrc
 
   %call = tail call i32 @callee1(i32 1, i32 1, i32 1, i32 %a0) nounwind
@@ -61,15 +62,16 @@ declare i32 @callee1(i32, i32, i32, i32)
 
 define i32 @caller2(i32 %a0, i32 %a1, i32 %a2, i32 %a3) nounwind {
 entry:
-; ALL-LABEL: caller2
+; ALL-LABEL: caller2:
 ; PIC32: jalr $25
+; PIC32R6: jalr $25
 ; PIC32MM: jalr $25
 ; PIC32MMR6: jalr $25
-; PIC32R6: jalr $25
-; STATIC32: jal
-; STATIC32MMR6: balc
-; N64: jalr $25
-; N64R6: jalr $25
+; STATIC32: jal callee2
+; STATIC32MMR6: balc callee2
+; PIC64: jalr $25
+; PIC64R6: jalr $25
+; STATIC64: j callee2
 ; PIC16: jalrc
 
   %call = tail call i32 @callee2(i32 1, i32 %a0, i32 %a1, i32 %a2, i32 %a3) nounwind
@@ -85,10 +87,11 @@ entry:
 ; PIC32R6: jalr $25
 ; PIC32MM: jalr $25
 ; PIC32MMR6: jalr $25
-; STATIC32: jal
-; STATIC32MMR6: balc
-; N64: jalr $25
-; N64R6: jalr $25
+; STATIC32: jal callee3
+; STATIC32MMR6: balc callee3
+; PIC64: jalr $25
+; PIC64R6: jalr $25
+; STATIC64: j callee3
 ; PIC16: jalrc
 
   %call = tail call i32 @callee3(i32 1, i32 1, i32 1, i32 %a0, i32 %a1, i32 %a2, i32 %a3, i32 %a4) nounwind
@@ -104,11 +107,11 @@ entry:
 ; PIC32R6: jalr $25
 ; PIC32MM: jalr $25
 ; PIC32MMR6: jalr $25
-; STATIC32: jal
-; SATATIC32MMR6: jal
+; STATIC32: jal callee4
+; STATIC32MMR6: balc callee4
 ; PIC64: jalr $25
-; STATIC64: jal
-; N64R6: jalr $25
+; PIC64R6: jalr $25
+; STATIC64: jal callee4
 ; PIC16: jalrc
 
   %call = tail call i32 @callee4(i32 1, i32 %a0, i32 %a1, i32 %a2, i32 %a3, i32 %a4, i32 %a5, i32 %a6, i32 %a7) nounwind
@@ -122,12 +125,13 @@ entry:
 ; ALL-LABEL: caller5:
 ; PIC32: jr $25
 ; PIC32R6: jr $25
-; PIC32MM: jr
-; PIC32MMR6: jr
-; STATIC32: j
-; STATIC32MMR6: bc
+; PIC32MM: jr $25
+; PIC32MMR6: jrc $25
+; STATIC32: j callee5
+; STATIC32MMR6: bc callee5
 ; PIC64: jr $25
-; STATIC64: j
+; PIC64R6: jr $25
+; STATIC64: j callee5
 ; PIC16: jalrc
 
   %0 = load i32, ptr @g0, align 4
@@ -166,12 +170,12 @@ entry:
 ; PIC32: jr $25
 ; PIC32R6: jrc $25
 ; PIC32MM: jr $25
-; PIC32MMR6: jrc
-; STATIC32: j
-; STATIC32MMR6: bc
+; PIC32MMR6: jrc $25
+; STATIC32: j caller8_1
+; STATIC32MMR6: bc caller8_1
 ; PIC64: jr $25
 ; PIC64R6: jrc $25
-; STATIC64: j
+; STATIC64: j caller8_1
 ; PIC16: jalrc
 
   %call = tail call fastcc i32 @caller8_1()
@@ -186,9 +190,10 @@ entry:
 ; PIC32MM: jalrs16 $25
 ; PIC32MMR6: jalr $25
 ; STATIC32: jal
-; STATIC32MMR6: balc
+; STATIC32MMR6: balc callee8
 ; PIC64: jalr $25
-; STATIC64: jal
+; PIC64R6: jalr $25
+; STATIC64: j callee8
 ; PIC16: jalrc
 
   %call = tail call i32 (i32, ...) @callee8(i32 2, i32 1) nounwind
@@ -207,12 +212,12 @@ entry:
 ; PIC32: jr $25
 ; PIC32R6: jrc $25
 ; PIC32MM: jr $25
-; PIC32MMR6: jrc
-; STATIC32: j
-; STATIC32MMR6: bc
+; PIC32MMR6: jrc $25
+; STATIC32: j caller9_1
+; STATIC32MMR6: bc caller9_1
 ; PIC64: jr $25
-; STATIC64: j
 ; PIC64R6: jrc $25
+; STATIC64: j caller9_1
 ; PIC16: jalrc
   %call = tail call fastcc i32 @caller9_1()
   ret i32 %call
@@ -225,11 +230,11 @@ entry:
 ; PIC32R6: jalrc $25
 ; PIC32MM: jalr $25
 ; PIC32MMR6: jalr $25
-; STATIC32: jal
-; STATIC32MMR6: balc
-; STATIC64: jal
+; STATIC32: jal callee9
+; STATIC32MMR6: balc callee9
 ; PIC64: jalr $25
 ; PIC64R6: jalrc $25
+; STATIC64: jal callee9
 ; PIC16: jalrc
 
   %call = tail call i32 @callee9(ptr byval(%struct.S) @gs1) nounwind
@@ -241,15 +246,15 @@ declare i32 @callee10(i32, i32, i32, i32, i32, i32, i32, i32, i32)
 define i32 @caller10(i32 %a0, i32 %a1, i32 %a2, i32 %a3, i32 %a4, i32 %a5, i32 %a6, i32 %a7, i32 %a8) nounwind {
 entry:
 ; ALL-LABEL: caller10:
-; PIC32: jalr $25
-; PIC32R6: jalr $25
-; PIC32MM: jalr $25
-; PIC32MMR6: jalr $25
-; STATIC32: jal
-; STATIC32MMR6: balc
-; STATIC64: jal
+; PIC32: jr $25
+; PIC32R6: jr $25
+; PIC32MM: jr $25
+; PIC32MMR6: jrc $25
+; STATIC32: j callee10
+; STATIC32MMR6: bc callee10
 ; PIC64: jalr $25
 ; PIC64R6: jalr $25
+; STATIC64: j callee10
 ; PIC16: jalrc
 
   %call = tail call i32 @callee10(i32 %a8, i32 %a0, i32 %a1, i32 %a2, i32 %a3, i32 %a4, i32 %a5, i32 %a6, i32 %a7) nounwind
@@ -265,11 +270,11 @@ entry:
 ; PIC32R6: jalrc $25
 ; PIC32MM: jalr $25
 ; PIC32MMR6: jalr $25
-; STATIC32: jal
-; STATIC32MMR6: balc
-; STATIC64: jal
+; STATIC32: jal callee11
+; STATIC32MMR6: balc callee11
 ; PIC64: jalr $25
 ; PIC64R6: jalrc $25
+; STATIC64: jal callee11
 ; PIC16: jalrc
 
   %call = tail call i32 @callee11(ptr byval(%struct.S) @gs1) nounwind
@@ -287,11 +292,11 @@ entry:
 ; PIC32R6: jalrc $25
 ; PIC32MM: jalr $25
 ; PIC32MMR6: jalr $25
-; STATIC32: jal
-; STATIC32MMR6: balc
-; STATIC64: jal
+; STATIC32: jal callee12
+; STATIC32MMR6: balc callee12
 ; PIC64: jalr $25
 ; PIC64R6: jalrc $25
+; STATIC64: jal callee12
 ; PIC16: jalrc
 
   tail call void @llvm.memcpy.p0.p0.i32(ptr align 4 @gs1, ptr align 4 %a0, i32 8, i1 false)
@@ -304,15 +309,15 @@ declare i32 @callee13(i32, ...)
 define i32 @caller13() nounwind {
 entry:
 ; ALL-LABEL: caller13:
-; PIC32: jalr $25
-; PIC32R6: jalr $25
-; PIC32MM: jalrs16 $25
-; PIC32MMR6: jalr $25
-; STATIC32: jal
-; STATIC32MMR6: balc
-; STATIC64: jal
-; PIC64R6: jalr $25
+; PIC32: jr $25
+; PIC32R6: jr $25
+; PIC32MM: jr $25
+; PIC32MMR6: jrc $25
+; STATIC32: j callee13
+; STATIC32MMR6: bc callee13
 ; PIC64: jalr $25
+; PIC64R6: jalr $25
+; STATIC64: j callee13
 ; PIC16: jalrc
 
   %call = tail call i32 (i32, ...) @callee13(i32 1, i32 2) nounwind
@@ -322,11 +327,11 @@ entry:
 ; Check that there is a chain edge between the load and store nodes.
 ;
 ; ALL-LABEL: caller14:
-; PIC32: lw ${{[0-9]+}}, 48($sp)
+; PIC32: lw ${{[0-9]+}}, 16($sp)
 ; PIC32: sw $4, 16($sp)
 
-; PIC32MM: lw ${{[0-9]+}}, 48($sp)
-; PIC32MM: sw16 $4, 16(${{[0-9]+}})
+; PIC32MM: lw ${{[0-9]+}}, 16($sp)
+; PIC32MM: sw $4, 16($sp)
 
 define void @caller14(i32 %a, i32 %b, i32 %c, i32 %d, i32 %e) {
 entry:

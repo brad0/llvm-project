@@ -1,4 +1,5 @@
 // RUN: %clang_cc1 %s -triple mipsel-unknown-linux-gnu -o /dev/null -emit-llvm -verify
+// RUN: %clang_cc1 %s -triple mips64el-unknown-linux-gnuabi64 -o /dev/null -emit-llvm -verify
 
 // Test that a forward declaration that is later defined in the same TU
 // is allowed for musttail calls.

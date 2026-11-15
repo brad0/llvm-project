@@ -1,4 +1,5 @@
 // RUN: %clang_cc1 %s -triple mipsel-unknown-linux-gnu -o /dev/null -emit-llvm -verify
+// RUN: %clang_cc1 %s -triple mips64el-unknown-linux-gnuabi64 -o /dev/null -emit-llvm -verify
 
 // Test that hidden and protected visibility functions can be tail called
 // because they are guaranteed to be DSO-local.
