@@ -1501,22 +1501,29 @@ __tid = 8
 	.text
 	PROC __kmp_invoke_microtask
 
+# if KMP_OS_DARWIN || (defined(__thumb__) && !KMP_OS_WINDOWS)
+# define KMP_ARM_FP_R7 1
+# define FP r7
+	// Push r7 next to lr so that r7 points to a frame record (the saved
+	// r7 followed by lr). Pushing one extra register (r3) to keep the
+	// stack aligned for when we call pkfn below
+	push	{r4-r7,lr}
+	push	{r3,r8-r11}
+#else
+# define KMP_ARM_FP_R7 0
+# define FP r11
 	// Pushing one extra register (r3) to keep the stack aligned
 	// for when we call pkfn below
 	push	{r3-r11,lr}
+#endif
+	// In both cases the saved FP is 8*4 bytes above sp
+# define FPOFF 8*4
 	// Load p_argv and &exit_frame
 	ldr	r4, [sp, #10*4]
 # if OMPT_SUPPORT
 	ldr	r5, [sp, #11*4]
 # endif
 
-# if KMP_OS_DARWIN || (defined(__thumb__) && !KMP_OS_WINDOWS)
-# define FP r7
-# define FPOFF 4*4
-#else
-# define FP r11
-# define FPOFF 8*4
-#endif
 	add	FP, sp, #FPOFF
 # if OMPT_SUPPORT
 	mov	r10, r5
@@ -1579,7 +1586,13 @@ KMP_LABEL(kmp_1):
 	mov	r1, #0
 	str	r1, [r10]
 # endif
+# if KMP_ARM_FP_R7
+	pop	{r3,r8-r11}
+	pop	{r4-r7,pc}
+# else
 	pop	{r3-r11,pc}
+# endif
+# undef KMP_ARM_FP_R7
 
 	DEBUG_INFO __kmp_invoke_microtask
 // -- End  __kmp_invoke_microtask
