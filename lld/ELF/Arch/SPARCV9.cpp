@@ -73,6 +73,9 @@ RelExpr SPARCV9::getRelExpr(RelType type, const Symbol &s,
     return R_ABS;
   case R_SPARC_DISP32:
     return R_PC;
+  case R_SPARC_TLS_DTPOFF32:
+  case R_SPARC_TLS_DTPOFF64:
+    return R_DTPREL;
   case R_SPARC_NONE:
     return R_NONE;
   default:
@@ -233,6 +236,11 @@ void SPARCV9::relocate(uint8_t *loc, const Relocation &rel,
     checkUInt(ctx, loc, val, 32, rel);
     write32be(loc, val);
     break;
+  case R_SPARC_TLS_DTPOFF32:
+    // V-word32
+    checkInt(ctx, loc, val, 32, rel);
+    write32be(loc, val);
+    break;
   case R_SPARC_DISP8:
     // V-byte8
     checkInt(ctx, loc, val, 8, rel);
@@ -313,6 +321,7 @@ void SPARCV9::relocate(uint8_t *loc, const Relocation &rel,
   case R_SPARC_64:
   case R_SPARC_DISP64:
   case R_SPARC_UA64:
+  case R_SPARC_TLS_DTPOFF64:
     // V-xword64
     write64be(loc, val);
     break;
