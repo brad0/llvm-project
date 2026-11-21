@@ -47,6 +47,10 @@ struct {
 // clang-format off
 #if defined(__linux__)
 #include "riscv/hwprobe.inc"
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/auxv.h>
+#include "riscv/hwcap.inc"
+#include "riscv/elf_aux_info.inc"
 #else
 #include "riscv/unimplemented.inc"
 #endif
