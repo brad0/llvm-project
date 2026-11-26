@@ -260,6 +260,7 @@ private:
   bool runOnNoncountableLoop();
 
   bool recognizePopcount();
+  bool recognizePopcountShift();
   void transformLoopToPopcount(BasicBlock *PreCondBB, Instruction *CntInst,
                                PHINode *CntPhi, Value *Var);
   bool isProfitableToInsertFFS(Intrinsic::ID IntrinID, Value *InitX,
@@ -2040,9 +2041,10 @@ bool LoopIdiomRecognize::runOnNoncountableLoop() {
                     << "] Noncountable Loop %"
                     << CurLoop->getHeader()->getName() << "\n");
 
-  return recognizePopcount() || recognizeAndInsertFFS() ||
-         recognizeShiftUntilBitTest() || recognizeShiftUntilZero() ||
-         recognizeShiftUntilLessThan() || recognizeAndInsertStrLen();
+  return recognizePopcount() || recognizePopcountShift() ||
+         recognizeAndInsertFFS() || recognizeShiftUntilBitTest() ||
+         recognizeShiftUntilZero() || recognizeShiftUntilLessThan() ||
+         recognizeAndInsertStrLen();
 }
 
 /// Check if the given conditional branch is based on the comparison between
@@ -2893,6 +2895,20 @@ bool LoopIdiomRecognize::recognizeShiftUntilLessThan() {
   return true;
 }
 
+/// Return true if replacing the single block loop \p LoopBody with a ctpop of
+/// \p Ty is profitable. The loop runs at least once, so this is the case if
+/// the ctpop costs no more than one iteration of the loop.
+static bool isCtpopProfitable(const TargetTransformInfo &TTI, Type *Ty,
+                              BasicBlock *LoopBody) {
+  constexpr auto CostKind = TargetTransformInfo::TCK_SizeAndLatency;
+  InstructionCost LoopCost = 0;
+  for (Instruction &I :
+       make_range(LoopBody->getFirstNonPHIIt(), LoopBody->end()))
+    LoopCost += TTI.getInstructionCost(&I, CostKind);
+  IntrinsicCostAttributes Attrs(Intrinsic::ctpop, Ty, {Ty});
+  return TTI.getIntrinsicInstrCost(Attrs, CostKind) <= LoopCost;
+}
+
 /// Recognizes a population count idiom in a non-countable loop.
 ///
 /// If detected, transforms the relevant code to issue the popcount intrinsic
@@ -2936,19 +2952,94 @@ bool LoopIdiomRecognize::recognizePopcount() {
   if (!detectPopcountIdiom(CurLoop, PreCondBB, CntInst, CntPhi, Val))
     return false;
 
-  // The loop runs at least once, so the popcount is profitable if it costs no
-  // more than one iteration of the loop.
-  constexpr auto CostKind = TargetTransformInfo::TCK_SizeAndLatency;
-  InstructionCost LoopCost = 0;
-  for (Instruction &I :
-       make_range(LoopBody->getFirstNonPHIIt(), LoopBody->end()))
-    LoopCost += TTI->getInstructionCost(&I, CostKind);
-  Type *Ty = Val->getType();
-  IntrinsicCostAttributes Attrs(Intrinsic::ctpop, Ty, {Ty});
-  if (TTI->getIntrinsicInstrCost(Attrs, CostKind) > LoopCost)
+  if (!isCtpopProfitable(*TTI, Val->getType(), LoopBody))
     return false;
 
   transformLoopToPopcount(PreCondBB, CntInst, CntPhi, Val);
+  return true;
+}
+
+/// Recognizes a loop that adds up the low bit of a value while shifting it
+/// right until it is zero:
+///
+///   while (x) {
+///     c += x & 1;
+///     x >>= 1;
+///   }
+///
+/// The value of c after the loop is c + ctpop(x), so use that after the loop
+/// instead. The loop is then dead and is removed later.
+bool LoopIdiomRecognize::recognizePopcountShift() {
+  using namespace PatternMatch;
+
+  if (CurLoop->getNumBackEdges() != 1 || CurLoop->getNumBlocks() != 1)
+    return false;
+
+  BasicBlock *LoopBody = CurLoop->getHeader();
+  BasicBlock *PH = CurLoop->getLoopPreheader();
+  auto *LoopTerm = dyn_cast<CondBrInst>(LoopBody->getTerminator());
+  if (!PH || !LoopTerm)
+    return false;
+
+  // The loop exits when x >> 1 is zero.
+  Value *NextX = matchCondition(LoopTerm, LoopBody);
+  Value *X;
+  if (!NextX || !match(NextX, m_LShr(m_Value(X), m_One())))
+    return false;
+  PHINode *PhiX = getRecurrenceVar(X, cast<Instruction>(NextX), LoopBody);
+  if (!PhiX)
+    return false;
+
+  // Find c += x & 1. The bit may be truncated or zero extended to the type of
+  // the count.
+  PHINode *PhiC = nullptr;
+  Instruction *NextC = nullptr;
+  for (PHINode &Phi : LoopBody->phis()) {
+    if (&Phi == PhiX)
+      continue;
+    Value *Inc = Phi.getIncomingValueForBlock(LoopBody);
+    if (!match(Inc, m_c_Add(m_Specific(&Phi),
+                            m_ZExtOrSelf(m_And(m_TruncOrSelf(m_Specific(PhiX)),
+                                               m_One())))))
+      continue;
+    if (PhiC)
+      return false;
+    PhiC = &Phi;
+    NextC = cast<Instruction>(Inc);
+  }
+  if (!PhiC)
+    return false;
+
+  // The loop must not do anything else that is visible after it.
+  for (Instruction &I : *LoopBody) {
+    if (I.mayHaveSideEffects())
+      return false;
+    if (&I != NextC && any_of(I.users(), [&](User *U) {
+          return cast<Instruction>(U)->getParent() != LoopBody;
+        }))
+      return false;
+  }
+
+  Type *Ty = PhiX->getType();
+  if (!isCtpopProfitable(*TTI, Ty, LoopBody))
+    return false;
+
+  IRBuilder<> Builder(PH->getTerminator());
+  Builder.SetCurrentDebugLocation(NextC->getDebugLoc());
+  Value *Count = Builder.CreateIntrinsic(Intrinsic::ctpop, Ty,
+                                         {PhiX->getIncomingValueForBlock(PH)});
+  Count = Builder.CreateZExtOrTrunc(Count, PhiC->getType());
+  Value *Result = Builder.CreateAdd(PhiC->getIncomingValueForBlock(PH), Count);
+
+  SmallVector<Instruction *, 2> Users;
+  for (User *U : NextC->users())
+    if (cast<Instruction>(U)->getParent() != LoopBody)
+      Users.push_back(cast<Instruction>(U));
+  for (Instruction *U : Users) {
+    U->replaceUsesOfWith(NextC, Result);
+    SE->forgetValue(U);
+  }
+  SE->forgetLoop(CurLoop);
   return true;
 }
 
