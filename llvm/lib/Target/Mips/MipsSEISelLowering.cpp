@@ -218,8 +218,13 @@ MipsSETargetLowering::MipsSETargetLowering(const MipsTargetMachine &TM,
     if (!Subtarget.isSingleFloat()) {
       setOperationAction(ISD::STRICT_FP_ROUND, MVT::f32, Legal);
       setOperationAction(ISD::STRICT_FP_EXTEND, MVT::f64, Legal);
-      if (Subtarget.isGP64bit() && Subtarget.isFP64bit())
+      if (Subtarget.isGP64bit() && Subtarget.isFP64bit()) {
         setOperationAction(ISD::STRICT_SINT_TO_FP, MVT::i64, Legal);
+        // A u32 zero extended to i64 is exactly representable as a signed
+        // value, so convert it with cvt.s.l or cvt.d.l.
+        setOperationAction(ISD::UINT_TO_FP, MVT::i32, Promote);
+        setOperationAction(ISD::STRICT_UINT_TO_FP, MVT::i32, Promote);
+      }
     }
   }
 
