@@ -4186,6 +4186,15 @@ SparcTargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
   if (!ResultPair.second)
     return std::make_pair(0U, nullptr);
 
+  // CanonicalFPRegs exists only for the assembler, and it comes first in
+  // the register class list, so the generic lookup returns it for %f32-%f62
+  // (D16-D31). Use the allocatable class of the register instead, which has
+  // the right value type.
+  if (ResultPair.second == &SP::CanonicalFPRegsRegClass)
+    ResultPair.second = SP::DFPRegsRegClass.contains(ResultPair.first)
+                            ? &SP::DFPRegsRegClass
+                            : &SP::FPRegsRegClass;
+
   // Force the use of I64Regs over IntRegs for 64-bit values.
   if (Subtarget->is64Bit() && VT == MVT::i64) {
     assert(ResultPair.second == &SP::IntRegsRegClass &&

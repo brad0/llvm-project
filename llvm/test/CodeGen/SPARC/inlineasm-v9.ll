@@ -40,6 +40,18 @@ entry:
   ret void
 }
 
+; CHECK-LABEL: test_constraint_high_float_reg:
+; CHECK: faddd %f32, %f32, %f32
+; CHECK: faddd %f62, %f62, %f62
+; CHECK: faddd %f34, %f34, %f34
+define void @test_constraint_high_float_reg() {
+entry:
+  tail call void asm sideeffect "faddd $0,$1,$2", "{f32},{f32},{f32}"(double 9.0, double 10.0, double 11.0)
+  tail call void asm sideeffect "faddd $0,$1,$2", "{f62},{f62},{f62}"(double 9.0, double 10.0, double 11.0)
+  tail call void asm sideeffect "faddd $0,$1,$2", "{d17},{d17},{d17}"(double 9.0, double 10.0, double 11.0)
+  ret void
+}
+
 ;; Ensure that 64-bit immediates aren't truncated
 ; CHECK-LABEL: test_large_immediate
 ; CHECK: or %i0, %lo(4294967296), %i0
