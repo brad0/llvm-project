@@ -4186,6 +4186,16 @@ SparcTargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
   if (!ResultPair.second)
     return std::make_pair(0U, nullptr);
 
+  // V8 has only %f0-%f31, so there is no D16-D31 or Q8-Q15.
+  if (!Subtarget->isV9()) {
+    MCRegister Reg = ResultPair.first;
+    if ((SP::DFPRegsRegClass.contains(Reg) &&
+         !SP::LowDFPRegsRegClass.contains(Reg)) ||
+        (SP::QFPRegsRegClass.contains(Reg) &&
+         !SP::LowQFPRegsRegClass.contains(Reg)))
+      return std::make_pair(0U, nullptr);
+  }
+
   // Force the use of I64Regs over IntRegs for 64-bit values.
   if (Subtarget->is64Bit() && VT == MVT::i64) {
     assert(ResultPair.second == &SP::IntRegsRegClass &&
