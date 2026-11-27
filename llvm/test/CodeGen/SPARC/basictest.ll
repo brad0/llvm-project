@@ -39,7 +39,10 @@ entry:
 ; CHECK-LABEL: signed_divide:
 ; CHECK: sra %o0, 31, %o2
 ; CHECK: wr %g0, %o2, %y
-; CHECK: sdiv %o0, %o1, %o0
+; CHECK-NEXT: nop
+; CHECK-NEXT: nop
+; CHECK-NEXT: nop
+; CHECK-NEXT: sdiv %o0, %o1, %o0
 define i32 @signed_divide(i32 %a, i32 %b) {
   %r = sdiv i32 %a, %b
   ret i32 %r
@@ -47,7 +50,10 @@ define i32 @signed_divide(i32 %a, i32 %b) {
 
 ; CHECK-LABEL: unsigned_divide:
 ; CHECK: wr %g0, %g0, %y
-; CHECK: udiv %o0, %o1, %o0
+; CHECK-NEXT: nop
+; CHECK-NEXT: nop
+; CHECK-NEXT: nop
+; CHECK-NEXT: udiv %o0, %o1, %o0
 define i32 @unsigned_divide(i32 %a, i32 %b) {
   %r = udiv i32 %a, %b
   ret i32 %r

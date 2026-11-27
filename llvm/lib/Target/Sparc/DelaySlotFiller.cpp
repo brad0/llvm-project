@@ -444,6 +444,53 @@ findDelayInstr(MachineBasicBlock &MBB, MachineBasicBlock::iterator slot,
   return MBB.end();
 }
 
+static bool isWriteY(const MachineInstr &MI) {
+  return (MI.getOpcode() == SP::WRASRrr || MI.getOpcode() == SP::WRASRri) &&
+         MI.getOperand(0).getReg() == SP::Y;
+}
+
+/// On SPARC V8 a write to %y may take until the third instruction after it
+/// completes to take effect, so an instruction that reads %y within that
+/// window (MULScc, RDY, SDIV, SDIVcc, UDIV, UDIVcc) gets an undefined value.
+/// V9 removed the delay. As in GCC, make sure there are at least three
+/// instructions between a WRY and the next reader of %y. This runs after the
+/// delay slots are filled so that the instructions are counted in the order
+/// they execute, and a filled delay slot can no longer shrink the gap.
+static bool padWriteYHazards(MachineBasicBlock &MBB,
+                             const SparcSubtarget *Subtarget) {
+  if (Subtarget->isV9())
+    return false;
+
+  const SparcInstrInfo *TII = Subtarget->getInstrInfo();
+  const TargetRegisterInfo *TRI = Subtarget->getRegisterInfo();
+  bool Changed = false;
+  // Number of instructions since the last WRY, saturated at 3.
+  unsigned Since = 3;
+  for (auto I = MBB.instr_begin(), E = MBB.instr_end(); I != E; ++I) {
+    // The unimp after a call that returns a struct is skipped by the return.
+    if (I->isMetaInstruction() || I->getOpcode() == SP::UNIMP)
+      continue;
+
+    if (Since < 3 && I->readsRegister(SP::Y, TRI)) {
+      // Never insert inside a bundle, that is between an instruction and its
+      // delay slot. Padding before the bundle also counts the instruction
+      // that owns the delay slot.
+      auto Pos = I;
+      while (Pos->isBundledWithPred())
+        --Pos;
+      for (; Since < 3; ++Since)
+        BuildMI(MBB, Pos, I->getDebugLoc(), TII->get(SP::NOP));
+      Changed = true;
+    }
+
+    if (isWriteY(*I))
+      Since = 0;
+    else if (Since < 3)
+      ++Since;
+  }
+  return Changed;
+}
+
 /// runOnMachineBasicBlock - Fill in delay slots for the given basic block.
 /// We assume there is only one delay slot per delayed instruction.
 ///
@@ -508,6 +555,7 @@ static bool runOnMachineBasicBlock(MachineBasicBlock &MBB) {
       MIBundleBuilder(MBB, MachineBasicBlock::iterator(MI), I);
     }
   }
+  Changed |= padWriteYHazards(MBB, Subtarget);
   return Changed;
 }
 

@@ -1,0 +1,45 @@
+# RUN: llc %s -mtriple=sparc -passes=sparc-delay-slot-filler -o - | FileCheck %s
+# RUN: llc %s -mtriple=sparc -mattr=+v9 -passes=sparc-delay-slot-filler -o - \
+# RUN:   | FileCheck %s --check-prefix=V9
+
+## On V8 there must be three instructions between a wr to %y and an
+## instruction that reads %y, counted in the order they run.
+
+---
+# CHECK-LABEL: name: gap
+# CHECK:      $y = WRASRrr $g0, $g0
+# CHECK-NEXT: $o2 = ADDri $o2, 1
+# CHECK-NEXT: NOP
+# CHECK-NEXT: NOP
+# CHECK-NEXT: $o0 = UDIVrr $o0, $o1
+# V9-LABEL:   name: gap
+# V9:         $y = WRASRrr $g0, $g0
+# V9-NEXT:    $o2 = ADDri $o2, 1
+# V9-NEXT:    $o0 = UDIVrr $o0, $o1
+name:            gap
+tracksRegLiveness: false
+body:             |
+  bb.0:
+    $y = WRASRrr $g0, $g0
+    $o2 = ADDri $o2, 1
+    $o0 = UDIVrr $o0, $o1, implicit-def $y, implicit $y
+    RETL 8, implicit $o0
+...
+---
+# CHECK-LABEL: name: far_enough
+# CHECK:      $y = WRASRrr $g0, $g0
+# CHECK-NEXT: $o2 = ADDri $o2, 1
+# CHECK-NEXT: $o3 = ADDri $o3, 1
+# CHECK-NEXT: $o4 = ADDri $o4, 1
+# CHECK-NEXT: $o0 = UDIVrr $o0, $o1
+name:            far_enough
+tracksRegLiveness: false
+body:             |
+  bb.0:
+    $y = WRASRrr $g0, $g0
+    $o2 = ADDri $o2, 1
+    $o3 = ADDri $o3, 1
+    $o4 = ADDri $o4, 1
+    $o0 = UDIVrr $o0, $o1, implicit-def $y, implicit $y
+    RETL 8, implicit $o0
+...
