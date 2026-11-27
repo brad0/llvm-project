@@ -186,6 +186,31 @@
 // RUN:   | FileCheck --check-prefix=CHECK-MODDSPREG %s
 // CHECK-MODDSPREG: "-target-feature" "-nooddspreg"
 //
+// -mllsc
+// RUN: %clang --target=mips-linux-gnu -### -c %s -mno-llsc -mllsc 2>&1 \
+// RUN:   | FileCheck --check-prefix=CHECK-MLLSC %s
+// RUN: %clang --target=mips-unknown-elf -### -c %s -mllsc 2>&1 \
+// RUN:   | FileCheck --check-prefix=CHECK-MLLSC %s
+// CHECK-MLLSC: "-target-feature" "+llsc"
+//
+// -mno-llsc
+// RUN: %clang --target=mips-linux-gnu -### -c %s -mips1 -mllsc -mno-llsc 2>&1 \
+// RUN:   | FileCheck --check-prefix=CHECK-MNOLLSC %s
+// CHECK-MNOLLSC: "-target-feature" "+nollsc"
+// CHECK-MNOLLSC-NOT: "+llsc"
+//
+// Linux emulates ll and sc, so they are used by default on MIPS I and the
+// R5900 there, as GCC does.
+// RUN: %clang --target=mips-linux-gnu -### -c %s -mips1 2>&1 \
+// RUN:   | FileCheck --check-prefix=CHECK-MLLSC %s
+// RUN: %clang --target=mipsel-linux-gnu -### -c %s -march=r5900 2>&1 \
+// RUN:   | FileCheck --check-prefix=CHECK-MLLSC %s
+// RUN: %clang --target=mips-unknown-elf -### -c %s -mips1 2>&1 \
+// RUN:   | FileCheck --check-prefix=CHECK-NO-LLSC-FEATURE %s
+// RUN: %clang --target=mips-linux-gnu -### -c %s -mips32 2>&1 \
+// RUN:   | FileCheck --check-prefix=CHECK-NO-LLSC-FEATURE %s
+// CHECK-NO-LLSC-FEATURE-NOT: llsc
+//
 // -mno-odd-spreg
 // RUN: %clang --target=mips-linux-gnu -### -c %s -modd-spreg -mno-odd-spreg 2>&1 \
 // RUN:   | FileCheck --check-prefix=CHECK-NOMODDSPREG %s

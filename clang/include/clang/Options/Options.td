@@ -6720,6 +6720,11 @@ def modd_spreg : Flag<["-"], "modd-spreg">, Group<m_mips_Features_Group>,
 def mno_odd_spreg : Flag<["-"], "mno-odd-spreg">, Group<m_mips_Features_Group>,
   HelpText<"Disable odd single-precision floating point registers">,
   Flags<[HelpHidden]>;
+def mllsc : Flag<["-"], "mllsc">, Group<m_mips_Features_Group>,
+  HelpText<"Use ll, sc and sync for atomic operations even if the ISA does "
+           "not have them (MIPS only)">;
+def mno_llsc : Flag<["-"], "mno-llsc">, Group<m_mips_Features_Group>,
+  HelpText<"Do not use ll, sc and sync (MIPS only)">;
 def mrelax_pic_calls : Flag<["-"], "mrelax-pic-calls">,
   Group<m_mips_Features_Group>,
   HelpText<"Produce relaxation hints for linkers to try optimizing PIC "

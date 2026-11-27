@@ -42,8 +42,10 @@ class LLVM_LIBRARY_VISIBILITY MipsTargetInfo : public TargetInfo {
   // to 6 for MIPS32 and MIPS64 and 0 for the older ISAs.
   unsigned ISALevel = 0;
   unsigned ISARev = 0;
-  // MIPS I and the R5900 have no ll and sc.
+  // MIPS I and the R5900 have no ll and sc, unless +llsc is given. The R5900
+  // has no lld and scd either.
   bool HasLLSC = true;
+  bool HasLLDSCD = true;
 
 protected:
   enum FPModeEnum { FPXX, FP32, FP64 } FPMode;
@@ -319,6 +321,8 @@ public:
     bool StrictAlign = false;
     bool FpGiven = false;
     bool IsR5900 = false;
+    bool UseLLSC = false;
+    bool NoLLSC = false;
 
     for (const auto &Feature : Features) {
       if (Feature == "+single-float")
@@ -366,6 +370,10 @@ public:
         UseIndirectJumpHazard = true;
       else if (Feature == "+r5900")
         IsR5900 = true;
+      else if (Feature == "+llsc")
+        UseLLSC = true;
+      else if (Feature == "+nollsc")
+        NoLLSC = true;
       else if (Feature == "+nooddspreg") {
         NoOddSpreg = true;
         OddSpregGiven = false;
@@ -387,9 +395,12 @@ public:
     }
 
     // Without ll and sc, the backend uses libcalls for atomic operations.
-    HasLLSC = ISALevel != 1 && !IsR5900;
+    HasLLSC = !NoLLSC && (UseLLSC || (ISALevel != 1 && !IsR5900));
+    HasLLDSCD = HasLLSC && !IsR5900;
     if (!HasLLSC)
       MaxAtomicInlineWidth = 0;
+    else if (!HasLLDSCD && MaxAtomicInlineWidth > 32)
+      MaxAtomicInlineWidth = 32;
 
     resetDataLayout();
 

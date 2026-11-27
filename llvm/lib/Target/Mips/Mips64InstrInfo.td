@@ -256,11 +256,11 @@ let AdditionalPredicates = [NotInMicroMips],
   def LL64 : LLBase<"ll", GPR32Opnd>,
              LW_FM<0x30>,
              PTR_64,
-             ISA_MIPS2_NOT_32R6_64R6_R5900;
+             ISA_LLSC_NOT_32R6_64R6;
   def SC64 : SCBase<"sc", GPR32Opnd>,
              LW_FM<0x38>,
              PTR_64,
-             ISA_MIPS2_NOT_32R6_64R6_R5900;
+             ISA_LLSC_NOT_32R6_64R6;
   def JR64 : IndirectBranch<"jr", GPR64Opnd>, MTLO_FM<8>, PTR_64;
 }
 

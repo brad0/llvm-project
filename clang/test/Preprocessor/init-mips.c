@@ -1935,7 +1935,8 @@
 // MIPS-XXR6:#define __mips_fpr 64
 // MIPS-XXR6:#define __mips_nan2008 1
 
-// MIPS I and the R5900 have no ll and sc, so atomic operations are libcalls.
+// MIPS I and the R5900 have no ll and sc, so atomic operations are libcalls,
+// unless +llsc is given. With +nollsc, they are libcalls on any ISA.
 //
 // RUN: %clang_cc1 -target-cpu mips1 \
 // RUN:   -E -dM -triple=mips-none-none < /dev/null \
@@ -1949,11 +1950,30 @@
 // NO-LLSC:#define __CLANG_ATOMIC_INT_LOCK_FREE 1
 // NO-LLSC-NOT:#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_{{[0-9]}} 1
 //
+// RUN: %clang_cc1 -target-cpu mips32 -target-feature +nollsc \
+// RUN:   -E -dM -triple=mips-none-none < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix NO-LLSC %s
+//
 // RUN: %clang_cc1 -target-cpu mips2 \
 // RUN:   -E -dM -triple=mips-none-none < /dev/null \
 // RUN:   | FileCheck -match-full-lines -check-prefix LLSC %s
+// RUN: %clang_cc1 -target-cpu mips1 -target-feature +llsc \
+// RUN:   -E -dM -triple=mips-none-none < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix LLSC %s
+// RUN: %clang_cc1 -target-cpu r5900 -target-feature +llsc \
+// RUN:   -E -dM -triple=mipsel-none-none < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix LLSC %s
 // LLSC:#define __CLANG_ATOMIC_INT_LOCK_FREE 2
 // LLSC:#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_4 1
+//
+// The R5900 has no lld and scd, so 64-bit atomic operations stay libcalls.
+// RUN: %clang_cc1 -target-cpu r5900 -target-feature +llsc -target-abi n64 \
+// RUN:   -E -dM -triple=mips64el-none-none < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix R5900-N64-LLSC %s
+// R5900-N64-LLSC:#define __CLANG_ATOMIC_INT_LOCK_FREE 2
+// R5900-N64-LLSC:#define __CLANG_ATOMIC_LLONG_LOCK_FREE 1
+// R5900-N64-LLSC:#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_4 1
+// R5900-N64-LLSC-NOT:#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_8 1
 
 // RUN: %clang_cc1 -target-cpu mips32 \
 // RUN:   -E -dM -triple=mips-unknown-netbsd -mrelocation-model pic < /dev/null \

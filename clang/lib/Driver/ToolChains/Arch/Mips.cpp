@@ -417,6 +417,17 @@ void mips::getMIPSTargetFeatures(const Driver &D, const llvm::Triple &Triple,
 
   AddTargetFeature(Args, Features, options::OPT_mno_odd_spreg,
                    options::OPT_modd_spreg, "nooddspreg");
+
+  // MIPS I and the R5900 have no ll and sc, but Linux emulates them, so as
+  // GCC does, use them there unless -mno-llsc is given.
+  if (Arg *A = Args.getLastArg(options::OPT_mllsc, options::OPT_mno_llsc)) {
+    if (A->getOption().matches(options::OPT_mllsc))
+      Features.push_back("+llsc");
+    else
+      Features.push_back("+nollsc");
+  } else if (Triple.isOSLinux() && (CPUName == "mips1" || CPUName == "r5900")) {
+    Features.push_back("+llsc");
+  }
   AddTargetFeature(Args, Features, options::OPT_mno_madd4, options::OPT_mmadd4,
                    "nomadd4");
   AddTargetFeature(Args, Features, options::OPT_mmt, options::OPT_mno_mt, "mt");

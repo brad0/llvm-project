@@ -268,6 +268,12 @@ def IsR5900 : Predicate<"Subtarget->isR5900()">,
               AssemblerPredicate<(all_of FeatureR5900)>;
 def NotR5900 : Predicate<"!Subtarget->isR5900()">,
                AssemblerPredicate<(none_of FeatureR5900)>;
+// llsc allows ll, sc and sync on MIPS I and the R5900.
+def HasMips2OrLLSC : Predicate<"Subtarget->hasMips2() || Subtarget->useLLSC()">,
+                     AssemblerPredicate<(any_of FeatureMips2, FeatureLLSC)>;
+def NotR5900OrLLSC : Predicate<"!Subtarget->isR5900() || Subtarget->useLLSC()">,
+                     AssemblerPredicate<(any_of (not FeatureR5900),
+                                                FeatureLLSC)>;
 def HasCRC   : Predicate<"Subtarget->hasCRC()">,
                AssemblerPredicate<(all_of FeatureCRC)>;
 def HasVirt  : Predicate<"Subtarget->hasVirt()">,
@@ -341,6 +347,16 @@ class ISA_MIPS2_NOT_32R6_64R6 {
 class ISA_MIPS2_NOT_32R6_64R6_R5900 {
   list<Predicate> InsnPredicates = [HasMips2, NotMips32r6, NotMips64r6,
                                     NotR5900];
+  list<Predicate> EncodingPredicates = [HasStdEnc];
+}
+// ll, sc and sync, which llsc allows on MIPS I and the R5900.
+class ISA_MIPS2_OR_LLSC {
+  list<Predicate> InsnPredicates = [HasMips2OrLLSC];
+  list<Predicate> EncodingPredicates = [HasStdEnc];
+}
+class ISA_LLSC_NOT_32R6_64R6 {
+  list<Predicate> InsnPredicates = [HasMips2OrLLSC, NotMips32r6, NotMips64r6,
+                                    NotR5900OrLLSC];
   list<Predicate> EncodingPredicates = [HasStdEnc];
 }
 class ISA_MIPS3 {
@@ -2239,7 +2255,7 @@ let DecoderNamespace = "COP3_" in {
              NOT_ASE_CNMIPS;
 }
 
-  def SYNC : MMRel, StdMMR6Rel, SYNC_FT<"sync">, SYNC_FM, ISA_MIPS2;
+  def SYNC : MMRel, StdMMR6Rel, SYNC_FT<"sync">, SYNC_FM, ISA_MIPS2_OR_LLSC;
   def SYNCI : MMRel, StdMMR6Rel, SYNCI_FT<"synci", mem_simm16>, SYNCI_FM,
               ISA_MIPS32R2;
 
@@ -2304,11 +2320,11 @@ let AdditionalPredicates = [NotInMicroMips] in {
 def LL : LLBase<"ll", GPR32Opnd>,
          LW_FM<0x30>,
          PTR_32,
-         ISA_MIPS2_NOT_32R6_64R6_R5900;
+         ISA_LLSC_NOT_32R6_64R6;
 def SC : SCBase<"sc", GPR32Opnd>,
          LW_FM<0x38>,
          PTR_32,
-         ISA_MIPS2_NOT_32R6_64R6_R5900;
+         ISA_LLSC_NOT_32R6_64R6;
 }
 /// Jump and Branch Instructions
 let AdditionalPredicates = [NotInMicroMips, RelocNotPIC] in
@@ -2989,7 +3005,7 @@ let AdditionalPredicates = [NotInMicroMips, NotNanoMips] in {
 }
 def : MipsInstAlias<"sdbbp", (SDBBP 0)>, ISA_MIPS32_NOT_32R6_64R6;
 let AdditionalPredicates = [NotInMicroMips] in
-  def : MipsInstAlias<"sync", (SYNC 0), 1>, ISA_MIPS2;
+  def : MipsInstAlias<"sync", (SYNC 0), 1>, ISA_MIPS2_OR_LLSC;
 
 def : MipsInstAlias<"mulo $rs, $rt",
                     (MULOMacro GPR32Opnd:$rs, GPR32Opnd:$rs, GPR32Opnd:$rt), 0>,
@@ -3270,7 +3286,7 @@ def : MipsPat<(mul GPR32:$lhs, GPR32:$rhs),
 
 // SYNC
 def : MipsPat<(MipsSync (i32 timmz)),
-              (SYNC 0)>, ISA_MIPS2;
+              (SYNC 0)>, ISA_MIPS2_OR_LLSC;
 
 // Call and tail call. On R6 these are only used when compact branches are
 // disabled, otherwise JAL_R6 and TAILCALL_R6 are used.

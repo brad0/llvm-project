@@ -220,7 +220,7 @@ void MipsTargetInfo::getTargetDefines(const LangOptions &Opts,
     // found in 64-bit processors. In the case of O32 on a 64-bit processor,
     // the instructions exist but using them violates the ABI since they
     // require 64-bit GPRs and O32 only supports 32-bit GPRs.
-    if (ABI == "n32" || ABI == "n64")
+    if (HasLLDSCD && (ABI == "n32" || ABI == "n64"))
       Builder.defineMacro("__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8");
   }
 }

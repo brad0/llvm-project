@@ -198,6 +198,12 @@ def FeatureR5900 : SubtargetFeature<"r5900", "IsR5900", "true",
                                     [FeatureMips3, FeatureSingleFloat,
                                      FeatureFixR5900]>;
 
+def FeatureLLSC : SubtargetFeature<"llsc", "UseLLSC", "true",
+                                   "Use ll, sc and sync for atomic operations "
+                                   "even if the ISA does not have them">;
+def FeatureNoLLSC : SubtargetFeature<"nollsc", "NoLLSC", "true",
+                                     "Do not use ll, sc and sync">;
+
 def FeatureUseTCCInDIV : SubtargetFeature<
                                "use-tcc-in-div",
                                "UseTCCInDIV", "false",

@@ -154,6 +154,13 @@ class MipsSubtarget : public MipsGenSubtargetInfo {
   // FixR5900 - Enable R5900 short loop erratum fix.
   bool FixR5900;
 
+  // UseLLSC - Use ll, sc and sync even if the ISA does not have them, as when
+  // the kernel emulates them.
+  bool UseLLSC = false;
+
+  // NoLLSC - Do not use ll, sc and sync.
+  bool NoLLSC = false;
+
   // UseSmallSection - Small section is used.
   bool UseSmallSection;
 
@@ -320,6 +327,13 @@ public:
   bool hasCnMips() const { return HasCnMips; }
   bool hasCnMipsP() const { return HasCnMipsP; }
   bool isR5900() const { return IsR5900; }
+  bool useLLSC() const { return UseLLSC; }
+  // MIPS I and the R5900 have no ll and sc.
+  bool hasLLSC() const {
+    return !NoLLSC && (UseLLSC || (hasMips2() && !isR5900()));
+  }
+  // MIPS I has no sync.
+  bool hasSync() const { return !NoLLSC && (UseLLSC || hasMips2()); }
   bool fixR5900() const { return FixR5900; }
 
   bool isLittle() const { return IsLittle; }

@@ -415,9 +415,10 @@ MipsTargetLowering::MipsTargetLowering(const MipsTargetMachine &TM,
   // Sink shifts into their users' blocks to expose extract patterns.
   setHasExtractBitsInsn(Subtarget.hasExtractInsert());
 
-  // MIPS I and the R5900 have no LL/SC instructions for atomic operations.
-  bool HasLLSC = Subtarget.hasMips2() && !Subtarget.isR5900();
-  if (HasLLSC && Subtarget.isGP64bit())
+  // MIPS I and the R5900 have no LL/SC instructions for atomic operations,
+  // unless llsc is given. The R5900 has no LLD/SCD either.
+  bool HasLLSC = Subtarget.hasLLSC();
+  if (HasLLSC && Subtarget.isGP64bit() && !Subtarget.isR5900())
     setMaxAtomicSizeInBitsSupported(64);
   else if (HasLLSC)
     setMaxAtomicSizeInBitsSupported(32);
@@ -2909,15 +2910,15 @@ SDValue MipsTargetLowering::lowerATOMIC_FENCE(SDValue Op,
   SyncScope::ID FenceSSID =
       static_cast<SyncScope::ID>(Op.getConstantOperandVal(2));
 
-  if (Subtarget.hasMips2() && FenceSSID == SyncScope::System)
+  if (Subtarget.hasSync() && FenceSSID == SyncScope::System)
     return DAG.getNode(MipsISD::Sync, DL, MVT::Other, Op.getOperand(0),
                        DAG.getTargetConstant(SType, DL, MVT::i32));
 
   // singlethread fences only synchronize with signal handlers on the same
   // thread and thus only need to preserve instruction order, not actually
-  // enforce memory ordering.
-  if ((Subtarget.hasMips1() && !Subtarget.hasMips2()) ||
-      FenceSSID == SyncScope::SingleThread) {
+  // enforce memory ordering. Without sync, GCC also does only this for other
+  // fences.
+  if (!Subtarget.hasSync() || FenceSSID == SyncScope::SingleThread) {
     // MEMBARRIER is a compiler barrier; it codegens to a no-op.
     return DAG.getNode(ISD::MEMBARRIER, DL, MVT::Other, Op.getOperand(0));
   }
