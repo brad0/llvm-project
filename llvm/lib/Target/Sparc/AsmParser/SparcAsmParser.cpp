@@ -125,6 +125,7 @@ class SparcAsmParser : public MCTargetAsmParser {
   ParseStatus matchSparcAsmModifiers(const MCExpr *&EVal, SMLoc &EndLoc);
 
   bool is64Bit() const { return getSTI().getTargetTriple().isSPARC64(); }
+  bool isV9() const { return getSTI().hasFeature(Sparc::FeatureV9); }
 
   bool expandSET(MCInst &Inst, SMLoc IDLoc,
                  SmallVectorImpl<MCInst> &Instructions);
@@ -773,6 +774,22 @@ bool SparcAsmParser::matchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                               MatchingInlineAsm);
   switch (MatchResult) {
   case Match_Success: {
+    // The floating-point compares that name an %fcc register, even %fcc0,
+    // are V9 only. V8 has just the form without it.
+    switch (Inst.getOpcode()) {
+    case SP::V9FCMPS:
+    case SP::V9FCMPD:
+    case SP::V9FCMPQ:
+    case SP::V9FCMPES:
+    case SP::V9FCMPED:
+    case SP::V9FCMPEQ:
+      if (!isV9() && Operands.size() == 4)
+        return Error(((SparcOperand &)*Operands[1]).getStartLoc(),
+                     "instruction requires a CPU feature not currently "
+                     "enabled");
+      break;
+    }
+
     switch (Inst.getOpcode()) {
     default:
       Inst.setLoc(IDLoc);
@@ -1436,8 +1453,17 @@ MCRegister SparcAsmParser::matchRegisterName(const AsmToken &Tok,
 
   StringRef Name = Tok.getString();
   MCRegister Reg = MatchRegisterName(Name.lower());
-  if (!Reg)
+  if (!Reg) {
     Reg = MatchRegisterAltName(Name.lower());
+    // The alternate names of %asr2-%asr6 (%ccr, %asi, %pc and %fprs) are V9
+    // only.
+    if (Reg && !isV9())
+      return SP::NoRegister;
+  }
+
+  // %tick is V9 only. It also matches the privileged register TICK.
+  if (Reg == SP::TICK && !isV9())
+    return SP::NoRegister;
 
   if (Reg) {
     // Some registers share a spelling (e.g. "f0" for F0/D0/Q0, "sp" for
@@ -1490,6 +1516,10 @@ MCRegister SparcAsmParser::matchRegisterName(const AsmToken &Tok,
     RegKind = SparcOperand::rk_Special;
     return SP::ICC;
   }
+
+  // The remaining names are V9 only.
+  if (!isV9())
+    return SP::NoRegister;
 
   // JPS1 extension - aliases for ASRs
   // Section 5.2.11 - Ancillary State Registers (ASRs)

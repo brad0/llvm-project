@@ -85,32 +85,3 @@ rd %asr6, %i0
 ! V8: wr %i0, 7, %asr6      ! encoding: [0x8d,0x86,0x20,0x07]
 ! V9: wr %i0, 7, %fprs      ! encoding: [0x8d,0x86,0x20,0x07]
 wr %i0, 7, %asr6
-
-!! Alternate names for %asr2-%asr6 are only for V9.
-!! TODO: make sure that using alternate names returns
-!! an error on V8 (currently it doesn't, see SparcRegisterInfo.td).
-
-! V9: rd %ccr, %i0          ! encoding: [0xb1,0x40,0x80,0x00]
-rd %ccr, %i0
-! V9: wr %i0, 7, %ccr       ! encoding: [0x85,0x86,0x20,0x07]
-wr %i0, 7, %ccr
-
-! V9: rd %asi, %i0          ! encoding: [0xb1,0x40,0xc0,0x00]
-rd %asi, %i0
-! V9: wr %i0, 7, %asi       ! encoding: [0x87,0x86,0x20,0x07]
-wr %i0, 7, %asi
-
-! V9: rd %tick, %i0         ! encoding: [0xb1,0x41,0x00,0x00]
-rd %tick, %i0
-! V9: wr %i0, 7, %tick      ! encoding: [0x89,0x86,0x20,0x07]
-wr %i0, 7, %tick
-
-! V9: rd %pc, %i0           ! encoding: [0xb1,0x41,0x40,0x00]
-rd %pc, %i0
-! V9: wr %i0, 7, %pc        ! encoding: [0x8b,0x86,0x20,0x07]
-wr %i0, 7, %pc
-
-! V9: rd %fprs, %i0         ! encoding: [0xb1,0x41,0x80,0x00]
-rd %fprs, %i0
-! V9: wr %i0, 7, %fprs      ! encoding: [0x8d,0x86,0x20,0x07]
-wr %i0, 7, %fprs

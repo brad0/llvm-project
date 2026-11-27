@@ -18,6 +18,7 @@
 #include "llvm/MC/MCDecoderOps.h"
 #include "llvm/MC/MCDisassembler/MCDisassembler.h"
 #include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/Endian.h"
@@ -206,6 +207,9 @@ static DecodeStatus DecodeFCCRegsRegisterClass(MCInst &Inst, unsigned RegNo,
                                                uint64_t Address,
                                                const MCDisassembler *Decoder) {
   if (RegNo >= std::size(FCCRegDecoderTable))
+    return MCDisassembler::Fail;
+  // V8 has only %fcc0, and the field is reserved there.
+  if (RegNo != 0 && !Decoder->getSubtargetInfo().hasFeature(Sparc::FeatureV9))
     return MCDisassembler::Fail;
   Inst.addOperand(MCOperand::createReg(FCCRegDecoderTable[RegNo]));
   return MCDisassembler::Success;

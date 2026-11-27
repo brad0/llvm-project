@@ -79,11 +79,9 @@ def Y : SparcCtrlReg<0, "y">, DwarfRegNum<[64]>;
 // Ancillary state registers (implementation defined)
 def ASR1 : SparcCtrlReg<1, "asr1">;
 let RegAltNameIndices = [RegNamesStateReg] in {
-// FIXME: Currently this results in the assembler accepting
-// the alternate names (%ccr, %asi, etc.) when targeting V8.
-// Make sure that the alternate names are available for V9 only:
+// The alternate names are available for V9 only:
 // %asr2-asr6      : valid on both V8 and V9.
-// %ccr, %asi, etc.: valid on V9, returns "no such register" error on V8.
+// %ccr, %asi, etc.: valid on V9, the assembler rejects them on V8.
 def ASR2 : SparcCtrlReg<2, "asr2", ["ccr"]>;
 def ASR3 : SparcCtrlReg<3, "asr3", ["asi"]>;
 def ASR4 : SparcCtrlReg<4, "asr4", ["tick"]>;

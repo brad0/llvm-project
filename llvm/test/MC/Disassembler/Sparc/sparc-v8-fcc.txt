@@ -1,0 +1,18 @@
+# RUN: llvm-mc --disassemble %s -triple=sparc-unknown-linux 2>%t.err \
+# RUN:   | FileCheck %s --check-prefix=V8 --implicit-check-not=fcmp
+# RUN: FileCheck %s --check-prefix=V8-ERR < %t.err
+# RUN: llvm-mc --disassemble %s -triple=sparcv9-unknown-linux | FileCheck %s --check-prefix=V9
+
+## V8 has only %fcc0, and the cc field of the compares is reserved there.
+
+# V8: fcmps %f0, %f4
+# V9: fcmps %f0, %f4
+0x81 0xa8 0x0a 0x24
+
+# V8-ERR: [[@LINE+2]]:1: warning: invalid instruction encoding
+# V9: fcmps %fcc1, %f0, %f4
+0x83 0xa8 0x0a 0x24
+
+# V8-ERR: [[@LINE+2]]:1: warning: invalid instruction encoding
+# V9: fcmpd %fcc3, %f0, %f4
+0x87 0xa8 0x0a 0x44
