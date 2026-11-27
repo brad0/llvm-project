@@ -53,6 +53,10 @@ def FeatureNoFMULS
   : SubtargetFeature<"no-fmuls", "HasNoFMULS", "true",
                      "Disable the fmuls instruction.">;
 
+def FeatureV7
+  : SubtargetFeature<"v7", "IsV7", "true",
+                     "Restrict to SPARC-V7 instructions",
+                     [FeatureSoftMulDiv, FeatureNoFSMULD]>;
 def FeatureV9
   : SubtargetFeature<"v9", "IsV9", "true",
                      "Enable SPARC-V9 instructions">;

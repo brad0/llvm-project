@@ -15,7 +15,7 @@ class Proc<string Name, list<SubtargetFeature> Features,
  : Processor<Name, NoItineraries, Features, TuneFeatures>;
 
 def : Proc<"generic",         []>;
-def : Proc<"v7",              [FeatureSoftMulDiv, FeatureNoFSMULD]>;
+def : Proc<"v7",              [FeatureV7, FeatureSoftMulDiv, FeatureNoFSMULD]>;
 def : Proc<"v8",              []>;
 def : Proc<"supersparc",      []>;
 def : Proc<"sparclite",       []>;

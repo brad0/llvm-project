@@ -41,6 +41,13 @@ def HasV9   : Predicate<"Subtarget->isV9()">,
 // costs for V8 instructions that are more expensive than their V9 ones.
 def HasNoV9 : Predicate<"!Subtarget->isV9()">;
 
+// HasV8 - This predicate is true unless the target is restricted to SPARC-V7,
+// which does not have the integer multiply and divide instructions, fsmuld
+// and stbar.
+def HasV8 : Predicate<"!Subtarget->isV7()">,
+            AssemblerPredicate<(none_of FeatureV7)>;
+def IsV7 : Predicate<"Subtarget->isV7()">;
+
 // HasVIS - This is true when the target processor has VIS extensions.
 def HasVIS : Predicate<"Subtarget->isVIS()">,
              AssemblerPredicate<(all_of FeatureVIS)>;
@@ -998,6 +1005,7 @@ def : Pat<(SPcmpicc i32:$lhs, i32:$rhs), (SUBCCrr $lhs, $rhs)>;
 def : Pat<(SPcmpicc i32:$lhs, (i32 simm13:$rhs)), (SUBCCri $lhs, imm:$rhs)>;
 
 // Section B.18 - Multiply Instructions, p. 113
+let Predicates = [HasV8] in {
 let Defs = [Y] in {
   defm UMUL : F3_12<"umul", 0b001010, umullohi, IntRegs, i32, simm13Op, IIC_iu_umul>;
   defm SMUL : F3_12<"smul", 0b001011, smullohi, IntRegs, i32, simm13Op, IIC_iu_smul>;
@@ -1007,12 +1015,14 @@ let Defs = [Y, ICC] in {
   defm UMULCC : F3_12np<"umulcc", 0b011010, IIC_iu_umul>;
   defm SMULCC : F3_12np<"smulcc", 0b011011, IIC_iu_smul>;
 }
+} // Predicates = [HasV8]
 
 let Defs = [Y, ICC], Uses = [Y, ICC] in {
   defm MULSCC : F3_12np<"mulscc", 0b100100>;
 }
 
 // Section B.19 - Divide Instructions, p. 115
+let Predicates = [HasV8] in {
 let Uses = [Y], Defs = [Y] in {
   defm UDIV : F3_12np<"udiv", 0b001110, IIC_iu_div>;
   defm SDIV : F3_12np<"sdiv", 0b001111, IIC_iu_div>;
@@ -1022,6 +1032,7 @@ let Uses = [Y], Defs = [Y, ICC] in {
   defm UDIVCC : F3_12np<"udivcc", 0b011110, IIC_iu_div>;
   defm SDIVCC : F3_12np<"sdivcc", 0b011111, IIC_iu_div>;
 }
+} // Predicates = [HasV8]
 
 // Section B.20 - SAVE and RESTORE, p. 117
 defm SAVE    : F3_12np<"save"   , 0b111100>;
@@ -1382,7 +1393,7 @@ let Predicates = [HasNoV9] in {
 }
 
 // Section B.30 - STBAR Instruction
-let hasSideEffects = 1, rd = 0, rs1 = 0b01111, rs2 = 0 in
+let Predicates = [HasV8], hasSideEffects = 1, rd = 0, rs1 = 0b01111, rs2 = 0 in
   def STBAR : F3_1<2, 0b101000, (outs), (ins), "stbar", []>;
 
 
@@ -1569,7 +1580,7 @@ def FSMULD : F3_3<2, 0b110100, 0b001101001,
                   [(set f64:$rd, (fmul (fpextend f32:$rs1),
                                         (fpextend f32:$rs2)))],
                   IIC_fpu_muld>,
-		  Requires<[HasFSMULD]>;
+		  Requires<[HasFSMULD, HasV8]>;
 def FDMULQ : F3_3<2, 0b110100, 0b001101110,
                   (outs QFPRegs:$rd), (ins DFPRegs:$rs1, DFPRegs:$rs2),
                   "fdmulq $rs1, $rs2, $rd",
@@ -2129,7 +2140,7 @@ def : Pat<(store (i32 0), ADDRrr:$dst), (STrr ADDRrr:$dst, (i32 G0))>;
 def : Pat<(store (i32 0), ADDRri:$dst), (STri ADDRri:$dst, (i32 G0))>;
 
 // All load-type operations in V8 comes with implicit acquire semantics.
-let Predicates = [HasNoV9] in {
+let Predicates = [HasNoV9, HasV8] in {
   // Acquire -> nop
   def : Pat<(atomic_fence (i32 4), timm), (NOP)>;
   // Release / AcqRel -> stbar
@@ -2137,6 +2148,10 @@ let Predicates = [HasNoV9] in {
   // AcqRel and stronger -> stbar; ldstub [%sp-1], %g0
   def : Pat<(atomic_fence timm, timm), (V8BAR)>;
 }
+
+// V7 has no stbar. As in GCC, a fence is only a compiler barrier there.
+let Predicates = [IsV7] in
+  def : Pat<(atomic_fence timm, timm), (MEMBARRIER)>;
 
 // We have to handle both 32 and 64-bit cases.
 let Predicates = [HasV9] in {

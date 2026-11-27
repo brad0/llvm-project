@@ -444,6 +444,50 @@ findDelayInstr(MachineBasicBlock &MBB, MachineBasicBlock::iterator slot,
   return MBB.end();
 }
 
+// Whether MI is a floating-point instruction, for the V7 rule below. Inline
+// asm may contain one.
+static bool isFPInstr(const MachineInstr &MI) {
+  if (MI.isInlineAsm())
+    return true;
+  for (const MachineOperand &MO : MI.operands()) {
+    if (!MO.isReg() || !MO.getReg())
+      continue;
+    Register Reg = MO.getReg();
+    if (Reg == SP::FSR || SP::FPRegsRegClass.contains(Reg) ||
+        SP::DFPRegsRegClass.contains(Reg) ||
+        SP::QFPRegsRegClass.contains(Reg) || SP::FCCRegsRegClass.contains(Reg))
+      return true;
+  }
+  return false;
+}
+
+/// On SPARC V7 the instruction executed immediately before an FBfcc must not
+/// be a floating-point instruction (V8 only requires a non-floating-point
+/// instruction between an FCMP and an FBfcc, see below). This runs after the
+/// delay slots are filled, so that it sees the instructions in the order they
+/// run. As in GCC, a branch at the start of a block always gets a nop, since
+/// the block before it may end with a floating-point instruction.
+static bool padV7FPBranchHazards(MachineBasicBlock &MBB,
+                                 const SparcSubtarget *Subtarget) {
+  if (!Subtarget->isV7())
+    return false;
+
+  const SparcInstrInfo *TII = Subtarget->getInstrInfo();
+  bool Changed = false;
+  const MachineInstr *Prev = nullptr;
+  for (auto I = MBB.instr_begin(), E = MBB.instr_end(); I != E; ++I) {
+    if (I->isMetaInstruction())
+      continue;
+    if ((I->getOpcode() == SP::FBCOND || I->getOpcode() == SP::FBCONDA) &&
+        (!Prev || isFPInstr(*Prev))) {
+      BuildMI(MBB, I, I->getDebugLoc(), TII->get(SP::NOP));
+      Changed = true;
+    }
+    Prev = &*I;
+  }
+  return Changed;
+}
+
 /// runOnMachineBasicBlock - Fill in delay slots for the given basic block.
 /// We assume there is only one delay slot per delayed instruction.
 ///
@@ -467,8 +511,7 @@ static bool runOnMachineBasicBlock(MachineBasicBlock &MBB) {
       continue;
     }
 
-    // TODO: If we ever want to support v7, this needs to be extended
-    // to cover all floating point operations.
+    // V7 also needs this, and more; see padV7FPBranchHazards.
     if (!Subtarget->isV9() &&
         (MI->getOpcode() == SP::FCMPS || MI->getOpcode() == SP::FCMPD ||
          MI->getOpcode() == SP::FCMPQ || MI->getOpcode() == SP::FCMPES ||
@@ -508,6 +551,7 @@ static bool runOnMachineBasicBlock(MachineBasicBlock &MBB) {
       MIBundleBuilder(MBB, MachineBasicBlock::iterator(MI), I);
     }
   }
+  Changed |= padV7FPBranchHazards(MBB, Subtarget);
   return Changed;
 }
 

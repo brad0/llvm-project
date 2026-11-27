@@ -1,0 +1,85 @@
+# RUN: llc %s -mtriple=sparc -mcpu=v7 -O0 -passes=sparc-delay-slot-filler -o - \
+# RUN:   | FileCheck %s --check-prefix=V7
+# RUN: llc %s -mtriple=sparc -mcpu=v8 -O0 -passes=sparc-delay-slot-filler -o - \
+# RUN:   | FileCheck %s --check-prefix=V8
+
+## On V7 the instruction before an fbfcc must not be a floating-point
+## instruction. V8 only needs one between an fcmp and an fbfcc.
+
+---
+# V7-LABEL: name: fp_op_before_branch
+# V7:      FCMPD $d0, $d1
+# V7-NEXT: NOP
+# V7-NEXT: $d2 = FADDD $d2, $d3, implicit $fsr
+# V7-NEXT: NOP
+# V7-NEXT: FBCOND %bb.2
+# V8-LABEL: name: fp_op_before_branch
+# V8:      FCMPD $d0, $d1
+# V8-NEXT: NOP
+# V8-NEXT: $d2 = FADDD $d2, $d3, implicit $fsr
+# V8-NEXT: FBCOND %bb.2
+name:            fp_op_before_branch
+tracksRegLiveness: false
+body:             |
+  bb.0:
+    successors: %bb.1, %bb.2
+    FCMPD $d0, $d1, implicit-def $fcc0, implicit $fsr
+    $d2 = FADDD $d2, $d3, implicit $fsr
+    FBCOND %bb.2, 22, implicit $fcc0
+
+  bb.1:
+    RETL 8
+
+  bb.2:
+    RETL 8
+...
+---
+# V7-LABEL: name: int_op_before_branch
+# V7:      FCMPD $d0, $d1
+# V7-NEXT: NOP
+# V7-NEXT: $o0 = ADDri $o0, 1
+# V7-NEXT: FBCOND %bb.2
+name:            int_op_before_branch
+tracksRegLiveness: false
+body:             |
+  bb.0:
+    successors: %bb.1, %bb.2
+    FCMPD $d0, $d1, implicit-def $fcc0, implicit $fsr
+    $o0 = ADDri $o0, 1
+    FBCOND %bb.2, 22, implicit $fcc0
+
+  bb.1:
+    RETL 8
+
+  bb.2:
+    RETL 8
+...
+---
+## The block before may end with a floating-point instruction.
+# V7-LABEL: name: branch_starts_block
+# V7:      bb.1:
+# V7:        NOP
+# V7-NEXT:   FBCOND %bb.3
+# V8-LABEL: name: branch_starts_block
+# V8:      bb.1:
+# V8:        successors:
+# V8-NEXT: {{^ *$}}
+# V8-NEXT:   FBCOND %bb.3
+name:            branch_starts_block
+tracksRegLiveness: false
+body:             |
+  bb.0:
+    successors: %bb.1
+    FCMPD $d0, $d1, implicit-def $fcc0, implicit $fsr
+    $o0 = ADDri $o0, 1
+
+  bb.1:
+    successors: %bb.2, %bb.3
+    FBCOND %bb.3, 22, implicit $fcc0
+
+  bb.2:
+    RETL 8
+
+  bb.3:
+    RETL 8
+...
