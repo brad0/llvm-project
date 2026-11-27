@@ -128,6 +128,7 @@ void SPARCV9::scanSectionImpl(InputSectionBase &sec, Relocs<RelTy> rels,
     case R_SPARC_UA32:
     case R_SPARC_64:
     case R_SPARC_UA64:
+    case R_SPARC_H34:
     case R_SPARC_H44:
     case R_SPARC_M44:
     case R_SPARC_L44:
@@ -135,7 +136,13 @@ void SPARCV9::scanSectionImpl(InputSectionBase &sec, Relocs<RelTy> rels,
     case R_SPARC_HM10:
     case R_SPARC_LM22:
     case R_SPARC_HI22:
+    case R_SPARC_22:
     case R_SPARC_13:
+    case R_SPARC_11:
+    case R_SPARC_10:
+    case R_SPARC_7:
+    case R_SPARC_6:
+    case R_SPARC_5:
     case R_SPARC_LO10:
     case R_SPARC_HIX22:
     case R_SPARC_LOX10:
@@ -154,6 +161,10 @@ void SPARCV9::scanSectionImpl(InputSectionBase &sec, Relocs<RelTy> rels,
     case R_SPARC_DISP64:
     case R_SPARC_PC10:
     case R_SPARC_PC22:
+    case R_SPARC_PC_HH22:
+    case R_SPARC_PC_HM10:
+    case R_SPARC_PC_LM22:
+    case R_SPARC_WDISP10:
     case R_SPARC_WDISP16:
     case R_SPARC_WDISP19:
     case R_SPARC_WDISP22:
@@ -256,13 +267,38 @@ void SPARCV9::relocate(uint8_t *loc, const Relocation &rel,
     break;
   case R_SPARC_22:
     // V-imm22
-    checkUInt(ctx, loc, val, 22, rel);
+    checkIntUInt(ctx, loc, val, 22, rel);
     write32be(loc, (read32be(loc) & ~0x003fffff) | (val & 0x003fffff));
     break;
   case R_SPARC_13:
     // V-simm13
     checkIntUInt(ctx, loc, val, 13, rel);
     write32be(loc, (read32be(loc) & ~0x00001fff) | (val & 0x00001fff));
+    break;
+  case R_SPARC_11:
+    // V-simm11
+    checkIntUInt(ctx, loc, val, 11, rel);
+    write32be(loc, (read32be(loc) & ~0x000007ff) | (val & 0x000007ff));
+    break;
+  case R_SPARC_10:
+    // V-simm10
+    checkIntUInt(ctx, loc, val, 10, rel);
+    write32be(loc, (read32be(loc) & ~0x000003ff) | (val & 0x000003ff));
+    break;
+  case R_SPARC_7:
+    // V-imm7
+    checkIntUInt(ctx, loc, val, 7, rel);
+    write32be(loc, (read32be(loc) & ~0x0000007f) | (val & 0x0000007f));
+    break;
+  case R_SPARC_6:
+    // V-imm6
+    checkIntUInt(ctx, loc, val, 6, rel);
+    write32be(loc, (read32be(loc) & ~0x0000003f) | (val & 0x0000003f));
+    break;
+  case R_SPARC_5:
+    // V-imm5
+    checkIntUInt(ctx, loc, val, 5, rel);
+    write32be(loc, (read32be(loc) & ~0x0000001f) | (val & 0x0000001f));
     break;
   case R_SPARC_GOT13:
     // V-simm13
@@ -271,6 +307,7 @@ void SPARCV9::relocate(uint8_t *loc, const Relocation &rel,
     break;
   case R_SPARC_GOT22:
   case R_SPARC_LM22:
+  case R_SPARC_PC_LM22:
     // T-imm22
     write32be(loc, (read32be(loc) & ~0x003fffff) | ((val >> 10) & 0x003fffff));
     break;
@@ -301,6 +338,14 @@ void SPARCV9::relocate(uint8_t *loc, const Relocation &rel,
                        (((val >> 2) & 0x0000c000) << 6) |
                        ((val >> 2) & 0x00003fff));
     break;
+  case R_SPARC_WDISP10:
+    // V-d2/disp8. cbcond holds a 10-bit word displacement, so the reach is
+    // 12 bits.
+    checkInt(ctx, loc, val, 12, rel);
+    write32be(loc, (read32be(loc) & ~0x00181fe0) |
+                       (((val >> 2) & 0x00000300) << 11) |
+                       (((val >> 2) & 0x000000ff) << 5));
+    break;
   case R_SPARC_GOT10:
   case R_SPARC_PC10:
     // T-simm10
@@ -317,12 +362,19 @@ void SPARCV9::relocate(uint8_t *loc, const Relocation &rel,
     write64be(loc, val);
     break;
   case R_SPARC_HH22:
+  case R_SPARC_PC_HH22:
     // V-imm22
     write32be(loc, (read32be(loc) & ~0x003fffff) | ((val >> 42) & 0x003fffff));
     break;
   case R_SPARC_HM10:
+  case R_SPARC_PC_HM10:
     // T-simm13
     write32be(loc, (read32be(loc) & ~0x000003ff) | ((val >> 32) & 0x000003ff));
+    break;
+  case R_SPARC_H34:
+    // V-imm22
+    checkUInt(ctx, loc, val, 34, rel);
+    write32be(loc, (read32be(loc) & ~0x003fffff) | ((val >> 12) & 0x003fffff));
     break;
   case R_SPARC_H44:
     // V-imm22

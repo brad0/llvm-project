@@ -1,7 +1,7 @@
 # REQUIRES: sparc
-# RUN: llvm-mc -filetype=obj -triple=sparcv9 %s -o %t.o
+# RUN: llvm-mc -filetype=obj -triple=sparcv9 -mattr=+osa2011 %s -o %t.o
 ## --threads=1 applies the sections in order, so the diagnostics are ordered.
-# RUN: not ld.lld --threads=1 %t.o --defsym=abs=0x10000 --defsym=big=0x100000000000 \
+# RUN: not ld.lld --threads=1 --error-limit=0 %t.o --defsym=abs=0x10000 --defsym=big=0x100000000000 \
 # RUN:   --defsym=far=pc+0x8000000 --defsym=huge=pc+0x200000000 -o /dev/null 2>&1 | \
 # RUN:   FileCheck %s --implicit-check-not=error:
 
@@ -14,6 +14,13 @@
 # CHECK: error: {{.*}}:(.abs+0x8): relocation R_SPARC_HI22 out of range: 17592186044416 is not in [0, 4294967295]; references 'big'
 # CHECK: error: {{.*}}:(.abs+0xc): relocation R_SPARC_H44 out of range: 17592186044416 is not in [0, 17592186044415]; references 'big'
 # CHECK: error: {{.*}}:(.abs+0x10): relocation R_SPARC_HIX22 out of range: 18446744073709486079 is not in [0, 4294967295]; references 'abs'
+# CHECK: error: {{.*}}:(.abs+0x14): relocation R_SPARC_H34 out of range: 17592186044416 is not in [0, 17179869183]; references 'big'
+# CHECK: error: {{.*}}:(.abs+0x18): relocation R_SPARC_22 out of range: 17592186044416 is not in [-2097152, 4194303]; references 'big'
+# CHECK: error: {{.*}}:(.abs+0x1c): relocation R_SPARC_11 out of range: 65536 is not in [-1024, 2047]; references 'abs'
+# CHECK: error: {{.*}}:(.abs+0x20): relocation R_SPARC_10 out of range: 65536 is not in [-512, 1023]; references 'abs'
+# CHECK: error: {{.*}}:(.abs+0x24): relocation R_SPARC_7 out of range: 65536 is not in [-64, 127]; references 'abs'
+# CHECK: error: {{.*}}:(.abs+0x28): relocation R_SPARC_6 out of range: 65536 is not in [-32, 63]; references 'abs'
+# CHECK: error: {{.*}}:(.abs+0x2c): relocation R_SPARC_5 out of range: 65536 is not in [-16, 31]; references 'abs'
 .section .abs,"ax",@progbits
   .byte abs
   .balign 2
@@ -23,6 +30,20 @@
   sethi %hi(big), %g1
   sethi %h44(big), %g1
   sethi %hix(abs), %g1
+  sethi 0, %g1
+  .reloc .-4, R_SPARC_H34, big
+  sethi 0, %g1
+  .reloc .-4, R_SPARC_22, big
+  movne %icc, 0, %g1
+  .reloc .-4, R_SPARC_11, abs
+  movrnz %g2, 0, %g1
+  .reloc .-4, R_SPARC_10, abs
+  ta 0
+  .reloc .-4, R_SPARC_7, abs
+  sllx %g1, 0, %g1
+  .reloc .-4, R_SPARC_6, abs
+  sll %g1, 0, %g1
+  .reloc .-4, R_SPARC_5, abs
 
 ## The PC-relative forms are signed, except R_SPARC_PC22, which is a bit field.
 ## far and huge are relative to pc, so the displacements do not depend on the
@@ -35,6 +56,7 @@
 # CHECK: error: {{.*}}:(.pcrel+0x10): relocation R_SPARC_WDISP22 out of range: 134217712 is not in [-8388608, 8388607]; references 'far'
 # CHECK: error: {{.*}}:(.pcrel+0x14): relocation R_SPARC_WDISP30 out of range: 8589934572 is not in [-2147483648, 2147483647]; references 'huge'
 # CHECK: error: {{.*}}:(.pcrel+0x18): relocation R_SPARC_PC22 out of range: 8589934568 is not in [-2147483648, 4294967295]; references 'huge'
+# CHECK: error: {{.*}}:(.pcrel+0x1c): relocation R_SPARC_WDISP10 out of range: 134217700 is not in [-2048, 2047]; references 'far'
 .section .pcrel,"ax",@progbits
 .globl pc
 pc:
@@ -47,3 +69,4 @@ pc:
   ba    far
   call  huge
   sethi %pc22(huge), %g5
+  cwbe  %g1, %g2, far

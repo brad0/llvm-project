@@ -3,7 +3,8 @@
 ## d/e, f/g and h/i sit at the two ends of the 13-, 16- and 8-bit fields.
 # RUN: ld.lld %t.o --defsym=a=0x0123456789ABCDEF --defsym=b=0x0123456789A --defsym=c=0x01234567 \
 # RUN:   --defsym=d=0x1fff --defsym=e=-0x1000 --defsym=f=0xffff --defsym=g=-0x8000 \
-# RUN:   --defsym=h=0xff --defsym=i=-0x80 --defsym=x=0xffffffff01234567 -o %t
+# RUN:   --defsym=h=0xff --defsym=i=-0x80 --defsym=x=0xffffffff01234567 \
+# RUN:   --defsym=imm5=0x1f --defsym=imm6=0x3f --defsym=imm7=0x7f -o %t
 # RUN: llvm-objdump -d --no-show-raw-insn --no-print-imm-hex %t | FileCheck %s
 # RUN: llvm-objdump -s %t | FileCheck --check-prefix=HEX %s
 
@@ -26,6 +27,13 @@
   sllx  %o0, 12, %o0
   or    %o0, %l44(b), %o0
 
+## R_SPARC_H34
+# CHECK-LABEL: section .ABS_34:
+# CHECK:        sethi 4660, %o0
+.section .ABS_34,"ax",@progbits
+  sethi 0, %o0
+  .reloc .-4, R_SPARC_H34, c
+
 ## R_SPARC_HI22, R_SPARC_LO10
 # CHECK-LABEL: section .ABS_32:
 # CHECK:        sethi 18641, %o0
@@ -42,6 +50,42 @@
 .section .ABS_13,"ax",@progbits
   or    %g0, d, %o0
   or    %g0, e, %o1
+
+## R_SPARC_22, R_SPARC_11, R_SPARC_10, R_SPARC_7, R_SPARC_6 and R_SPARC_5 fill
+## the immediate of sethi, movcc, movr, Tcc and the shifts. Like R_SPARC_13
+## they take a signed as well as an unsigned value.
+# CHECK-LABEL: section .ABS_IMM:
+# CHECK:        sethi 65535, %o0
+# CHECK-NEXT:   sethi 4161536, %o1
+# CHECK-NEXT:   movne %icc, 255, %o0
+# CHECK-NEXT:   movrnz %o2, 255, %o0
+# CHECK-NEXT:   ta %icc, 127
+# CHECK-NEXT:   sllx %o0, 63, %o0
+# CHECK-NEXT:   sll %o0, 31, %o0
+.section .ABS_IMM,"ax",@progbits
+  sethi  0, %o0
+  .reloc .-4, R_SPARC_22, f
+  sethi  0, %o1
+  .reloc .-4, R_SPARC_22, g
+  movne  %icc, 0, %o0
+  .reloc .-4, R_SPARC_11, h
+  movrnz %o2, 0, %o0
+  .reloc .-4, R_SPARC_10, h
+  ta     0
+  .reloc .-4, R_SPARC_7, imm7
+  sllx   %o0, 0, %o0
+  .reloc .-4, R_SPARC_6, imm6
+  sll    %o0, 0, %o0
+  .reloc .-4, R_SPARC_5, imm5
+
+## -0x80 in the simm11 field of movcc and the simm10 field of movr.
+# HEX-LABEL: section .ABS_IMM_NEG:
+# HEX-NEXT:  93666780 937ab780
+.section .ABS_IMM_NEG,"ax",@progbits
+  movne  %icc, 0, %o1
+  .reloc .-4, R_SPARC_11, i
+  movrnz %o2, 0, %o1
+  .reloc .-4, R_SPARC_10, i
 
 ## R_SPARC_HIX22, R_SPARC_LOX10. The pair encodes the complement of the value,
 ## so it is limited to values whose upper 32 bits are all ones.
