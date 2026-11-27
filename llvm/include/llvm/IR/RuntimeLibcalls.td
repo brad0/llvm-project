@@ -4838,7 +4838,7 @@ def _Qp_dtoq : RuntimeLibcallImpl<FPEXT_F64_F128>;
 def _Qp_qtos : RuntimeLibcallImpl<FPROUND_F128_F32>;
 def _Qp_qtod : RuntimeLibcallImpl<FPROUND_F128_F64>;
 
-// SPARC32 && !Subtarget->useSoftFloat()
+// SPARC32, with and without soft-float
 def _Q_add : RuntimeLibcallImpl<ADD_F128>;
 def _Q_sub : RuntimeLibcallImpl<SUB_F128>;
 def _Q_mul : RuntimeLibcallImpl<MUL_F128>;
@@ -4853,7 +4853,7 @@ def _Q_dtoq : RuntimeLibcallImpl<FPEXT_F64_F128>;
 def _Q_qtos : RuntimeLibcallImpl<FPROUND_F128_F32>;
 def _Q_qtod : RuntimeLibcallImpl<FPROUND_F128_F64>;
 
-// SPARC32 && (Subtarget->hasHardQuad() || !Subtarget->useSoftFloat())
+// SPARC32
 def _Q_qtoll : RuntimeLibcallImpl<FPTOSINT_F128_I64>;
 def _Q_qtoull : RuntimeLibcallImpl<FPTOUINT_F128_I64>;
 def _Q_lltoq : RuntimeLibcallImpl<SINTTOFP_I64_F128>;

@@ -98,7 +98,9 @@ void SparcSubtarget::initLibcallLoweringInfo(LibcallLoweringInfo &Info) const {
     Info.setLibcallImpl(RTLIB::FPEXT_F64_F128, RTLIB::impl__Qp_dtoq);
     Info.setLibcallImpl(RTLIB::FPROUND_F128_F32, RTLIB::impl__Qp_qtos);
     Info.setLibcallImpl(RTLIB::FPROUND_F128_F64, RTLIB::impl__Qp_qtod);
-  } else if (!useSoftFloat()) {
+  } else if (!is64Bit()) {
+    // These names are part of the 32-bit ABI, so they are used with soft-float
+    // too, as in GCC.
     Info.setLibcallImpl(RTLIB::ADD_F128, RTLIB::impl__Q_add);
     Info.setLibcallImpl(RTLIB::SUB_F128, RTLIB::impl__Q_sub);
     Info.setLibcallImpl(RTLIB::MUL_F128, RTLIB::impl__Q_mul);

@@ -237,10 +237,24 @@ static unsigned toCallerWindow(unsigned Reg) {
   return Reg;
 }
 
+// The 32-bit SPARC ABI passes a long double (fp128) by reference and returns
+// it in memory. With soft-float an fp128 argument or return value reaches the
+// call lowering as i32 parts, which the calling convention would otherwise
+// put in registers. Return true if Arg is such a part. The sret argument of a
+// demoted fp128 return has the fp128 return type as its OrigTy.
+template <typename ArgT> static bool isSoftFP128Part(const ArgT &Arg) {
+  return Arg.OrigTy && Arg.OrigTy->isFP128Ty() && Arg.VT != MVT::f128 &&
+         !Arg.Flags.isSRet();
+}
+
 bool SparcTargetLowering::CanLowerReturn(
     CallingConv::ID CallConv, MachineFunction &MF, bool isVarArg,
     const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context,
     const Type *RetTy) const {
+  if (!Subtarget->is64Bit() &&
+      llvm::any_of(Outs, [](const auto &Out) { return isSoftFP128Part(Out); }))
+    return false;
+
   SmallVector<CCValAssign, 16> RVLocs;
   CCState CCInfo(CallConv, isVarArg, MF, RVLocs, Context);
   return CCInfo.CheckReturn(Outs, Subtarget->is64Bit() ? RetCC_Sparc64
@@ -443,12 +457,48 @@ SDValue SparcTargetLowering::LowerFormalArguments(
 /// pass FP values in FP registers for fastcc functions.
 SDValue SparcTargetLowering::LowerFormalArguments_32(
     SDValue Chain, CallingConv::ID CallConv, bool isVarArg,
-    const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &dl,
+    const SmallVectorImpl<ISD::InputArg> &OrigIns, const SDLoc &dl,
     SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
   MachineFunction &MF = DAG.getMachineFunction();
   MachineRegisterInfo &RegInfo = MF.getRegInfo();
   SparcMachineFunctionInfo *FuncInfo = MF.getInfo<SparcMachineFunctionInfo>();
   EVT PtrVT = getPointerTy(DAG.getDataLayout());
+
+  // With soft-float, an fp128 argument comes as i32 parts, but it is passed
+  // by reference. Lower its address as a single argument, and load the parts
+  // from it below. SoftFP128Parts holds the parts for each such argument.
+  SmallVector<ISD::InputArg, 16> CollapsedIns;
+  SmallVector<SmallVector<ISD::InputArg, 4>, 4> SoftFP128Parts;
+  SmallVector<bool, 16> IsSoftFP128Ptr;
+  bool HasSoftFP128 =
+      llvm::any_of(OrigIns, [](const auto &In) { return isSoftFP128Part(In); });
+  if (HasSoftFP128) {
+    for (unsigned i = 0, e = OrigIns.size(); i != e;) {
+      if (!isSoftFP128Part(OrigIns[i])) {
+        CollapsedIns.push_back(OrigIns[i]);
+        IsSoftFP128Ptr.push_back(false);
+        ++i;
+        continue;
+      }
+      ISD::InputArg Ptr = OrigIns[i];
+      SoftFP128Parts.emplace_back();
+      for (unsigned ArgIndex = OrigIns[i].OrigArgIndex;
+           i != e && OrigIns[i].OrigArgIndex == ArgIndex; ++i)
+        SoftFP128Parts.back().push_back(OrigIns[i]);
+      ISD::ArgFlagsTy Flags;
+      Flags.setPointer();
+      Flags.setOrigAlign(Align(4));
+      Ptr.Flags = Flags;
+      Ptr.VT = MVT::i32;
+      Ptr.ArgVT = MVT::i32;
+      Ptr.OrigTy = PointerType::getUnqual(*DAG.getContext());
+      Ptr.PartOffset = 0;
+      CollapsedIns.push_back(Ptr);
+      IsSoftFP128Ptr.push_back(true);
+    }
+  }
+  const SmallVectorImpl<ISD::InputArg> &Ins =
+      HasSoftFP128 ? CollapsedIns : OrigIns;
 
   // Assign locations to all of the incoming arguments.
   SmallVector<CCValAssign, 16> ArgLocs;
@@ -589,6 +639,23 @@ SDValue SparcTargetLowering::LowerFormalArguments_32(
                                    MachinePointerInfo()));
       ++i;
       ++InIdx;
+    }
+  }
+
+  if (HasSoftFP128) {
+    SmallVector<SDValue, 16> CollapsedVals;
+    CollapsedVals.swap(InVals);
+    for (unsigned i = 0, P = 0, e = CollapsedVals.size(); i != e; ++i) {
+      if (!IsSoftFP128Ptr[i]) {
+        InVals.push_back(CollapsedVals[i]);
+        continue;
+      }
+      for (const ISD::InputArg &Part : SoftFP128Parts[P++]) {
+        SDValue Addr = DAG.getMemBasePlusOffset(
+            CollapsedVals[i], TypeSize::getFixed(Part.PartOffset), dl);
+        InVals.push_back(
+            DAG.getLoad(Part.VT, dl, Chain, Addr, MachinePointerInfo()));
+      }
     }
   }
 
@@ -866,12 +933,69 @@ SparcTargetLowering::LowerCall_32(TargetLowering::CallLoweringInfo &CLI,
   LLVMContext &Ctx = *DAG.getContext();
   EVT PtrVT = getPointerTy(MF.getDataLayout());
 
+  // With soft-float, store each fp128 argument, which comes as i32 parts, in
+  // a stack slot and pass its address instead, as the ABI requires.
+  bool PassesSoftFP128 = false;
+  if (llvm::any_of(Outs,
+                   [](const auto &Out) { return isSoftFP128Part(Out); })) {
+    SmallVector<ISD::OutputArg, 16> NewOuts;
+    SmallVector<SDValue, 16> NewOutVals;
+    SmallVector<SDValue, 8> Stores;
+    for (unsigned i = 0, e = Outs.size(); i != e;) {
+      if (!isSoftFP128Part(Outs[i])) {
+        NewOuts.push_back(Outs[i]);
+        NewOutVals.push_back(OutVals[i]);
+        ++i;
+        continue;
+      }
+      SDValue Slot = DAG.CreateStackTemporary(TypeSize::getFixed(16), Align(8));
+      int FI = cast<FrameIndexSDNode>(Slot)->getIndex();
+      ISD::OutputArg Ptr = Outs[i];
+      for (unsigned ArgIndex = Outs[i].OrigArgIndex;
+           i != e && Outs[i].OrigArgIndex == ArgIndex; ++i) {
+        unsigned Offset = Outs[i].PartOffset;
+        SDValue Addr =
+            DAG.getMemBasePlusOffset(Slot, TypeSize::getFixed(Offset), dl);
+        Stores.push_back(
+            DAG.getStore(Chain, dl, OutVals[i], Addr,
+                         MachinePointerInfo::getFixedStack(MF, FI, Offset)));
+      }
+      ISD::ArgFlagsTy Flags;
+      if (Ptr.Flags.isVarArg())
+        Flags.setVarArg();
+      Flags.setPointer();
+      Flags.setOrigAlign(Align(4));
+      Ptr.Flags = Flags;
+      Ptr.VT = MVT::i32;
+      Ptr.ArgVT = MVT::i32;
+      Ptr.OrigTy = PointerType::getUnqual(Ctx);
+      Ptr.PartOffset = 0;
+      NewOuts.push_back(Ptr);
+      NewOutVals.push_back(Slot);
+    }
+    Chain = DAG.getNode(ISD::TokenFactor, dl, MVT::Other, Stores);
+    Outs.swap(NewOuts);
+    OutVals.swap(NewOutVals);
+    PassesSoftFP128 = true;
+  }
+
+  // A libcall that returns fp128 with soft-float has its result as i32 parts
+  // in Ins. It returns the value in memory like a function returning a
+  // struct, so pass the address of a stack slot for it.
+  SDValue SoftFP128RetSlot;
+  if (!Ins.empty() && isSoftFP128Part(Ins[0]))
+    SoftFP128RetSlot =
+        DAG.CreateStackTemporary(TypeSize::getFixed(16), Align(8));
+
   // Analyze operands of the call, assigning locations to each operand.
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
   CCInfo.AnalyzeCallOperands(Outs, CC_Sparc32);
 
+  // The stack slots above belong to the caller's frame.
+  if (PassesSoftFP128 || SoftFP128RetSlot)
+    isTailCall = false;
   isTailCall = isTailCall && IsEligibleForTailCallOptimization(
                                  CCInfo, CLI, DAG.getMachineFunction());
   if (!isTailCall && CLI.CB && CLI.CB->isMustTailCall())
@@ -1114,6 +1238,16 @@ SparcTargetLowering::LowerCall_32(TargetLowering::CallLoweringInfo &CLI,
         DAG.getStore(Chain, dl, Arg, PtrOff, MachinePointerInfo()));
   }
 
+  if (SoftFP128RetSlot) {
+    // Store the address of the slot for the result in %sp+64.
+    SDValue StackPtr = DAG.getRegister(SP::O6, MVT::i32);
+    SDValue PtrOff = DAG.getNode(ISD::ADD, dl, MVT::i32, StackPtr,
+                                 DAG.getIntPtrConstant(64, dl));
+    MemOpChains.push_back(DAG.getStore(Chain, dl, SoftFP128RetSlot, PtrOff,
+                                       MachinePointerInfo()));
+    hasStructRetAttr = true;
+    SRetArgSize = 16;
+  }
 
   // Emit all stores, make sure the occur before any copies into physregs.
   if (!MemOpChains.empty())
@@ -1178,6 +1312,25 @@ SparcTargetLowering::LowerCall_32(TargetLowering::CallLoweringInfo &CLI,
 
   Chain = DAG.getCALLSEQ_END(Chain, ArgsSize, 0, InGlue, dl);
   InGlue = Chain.getValue(1);
+
+  if (SoftFP128RetSlot) {
+    // Load the parts of the result from the slot. The parts are in memory
+    // order, as for an argument.
+    int FI = cast<FrameIndexSDNode>(SoftFP128RetSlot)->getIndex();
+    SmallVector<SDValue, 4> LoadChains;
+    unsigned Offset = 0;
+    for (const ISD::InputArg &In : Ins) {
+      SDValue Addr = DAG.getMemBasePlusOffset(SoftFP128RetSlot,
+                                              TypeSize::getFixed(Offset), dl);
+      SDValue Load =
+          DAG.getLoad(In.VT, dl, Chain, Addr,
+                      MachinePointerInfo::getFixedStack(MF, FI, Offset));
+      InVals.push_back(Load);
+      LoadChains.push_back(Load.getValue(1));
+      Offset += In.VT.getStoreSize();
+    }
+    return DAG.getNode(ISD::TokenFactor, dl, MVT::Other, LoadChains);
+  }
 
   // Assign locations to each value returned by this call.
   SmallVector<CCValAssign, 16> RVLocs;
@@ -2077,6 +2230,9 @@ SparcTargetLowering::SparcTargetLowering(const TargetMachine &TM,
 
   if (Subtarget->isV9())
     setTargetDAGCombine({ISD::BSWAP, ISD::STORE});
+
+  if (!Subtarget->is64Bit() && Subtarget->useSoftFloat())
+    setTargetDAGCombine({ISD::SETCC, ISD::SELECT_CC, ISD::BR_CC});
 
   if (Subtarget->hasLeonCycleCounter())
     setOperationAction({ISD::READCYCLECOUNTER, ISD::READSTEADYCOUNTER},
@@ -3838,11 +3994,53 @@ SDValue SparcTargetLowering::PerformSTORECombine(SDNode *N,
   return SDValue();
 }
 
+// With soft-float in 32-bit mode, fp128 is softened before the compares are
+// lowered, and a softened compare calls a __*tf2 routine, which 32-bit SPARC
+// does not have. Lower fp128 compares to the _Q_* routines first, as with an
+// FPU and as GCC does.
+static SDValue
+performSoftF128CompareCombine(SDNode *N, TargetLowering::DAGCombinerInfo &DCI,
+                              const SparcTargetLowering &TLI,
+                              const SparcSubtarget &Subtarget) {
+  if (!DCI.isBeforeLegalize())
+    return SDValue();
+  unsigned LHSOpNo = N->getOpcode() == ISD::BR_CC ? 2 : 0;
+  if (N->getOperand(LHSOpNo).getValueType() != MVT::f128)
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+  bool IsV9 = Subtarget.isV9();
+  switch (N->getOpcode()) {
+  case ISD::BR_CC:
+    return LowerBR_CC(SDValue(N, 0), DAG, TLI, /*hasHardQuad=*/false, IsV9,
+                      /*is64Bit=*/false);
+  case ISD::SELECT_CC:
+    return LowerSELECT_CC(SDValue(N, 0), DAG, TLI, /*hasHardQuad=*/false, IsV9,
+                          /*is64Bit=*/false);
+  case ISD::SETCC: {
+    // The result may still be i1 here, so select an i32 and truncate it.
+    SDLoc DL(N);
+    SDValue Select = DAG.getSelectCC(
+        DL, N->getOperand(0), N->getOperand(1),
+        DAG.getConstant(1, DL, MVT::i32), DAG.getConstant(0, DL, MVT::i32),
+        cast<CondCodeSDNode>(N->getOperand(2))->get());
+    Select = LowerSELECT_CC(Select, DAG, TLI, /*hasHardQuad=*/false, IsV9,
+                            /*is64Bit=*/false);
+    return DAG.getZExtOrTrunc(Select, DL, N->getValueType(0));
+  }
+  }
+  return SDValue();
+}
+
 SDValue SparcTargetLowering::PerformDAGCombine(SDNode *N,
                                                DAGCombinerInfo &DCI) const {
   switch (N->getOpcode()) {
   default:
     break;
+  case ISD::SETCC:
+  case ISD::SELECT_CC:
+  case ISD::BR_CC:
+    return performSoftF128CompareCombine(N, DCI, *this, *Subtarget);
   case ISD::BITCAST:
     return PerformBITCASTCombine(N, DCI);
   case ISD::BSWAP:

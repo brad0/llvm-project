@@ -18,7 +18,7 @@ define double @test_adddf3(double %a, double %b) #0 {
 
 define fp128 @test_addtf3(fp128 %a, fp128 %b) #0 {
   ; CHECK-LABEL:  test_addtf3:
-  ; CHECK:        call __addtf3
+  ; CHECK:        call _Q_add
   %add = fadd fp128 %a, %b
   ret fp128 %add
 }
@@ -39,7 +39,7 @@ define double @test_muldf3(double %a, double %b) #0 {
 
 define fp128 @test_multf3(fp128 %a, fp128 %b) #0 {
   ; CHECK-LABEL:  test_multf3:
-  ; CHECK:        call __multf3
+  ; CHECK:        call _Q_mul
   %mul = fmul fp128 %a, %b
   ret fp128 %mul
 }
@@ -60,7 +60,7 @@ define double @test_subdf3(double %a, double %b) #0 {
 
 define fp128 @test_subtf3(fp128 %a, fp128 %b) #0 {
   ; CHECK-LABEL:  test_subtf3:
-  ; CHECK:        call __subtf3
+  ; CHECK:        call _Q_sub
   %sub = fsub fp128 %a, %b
   ret fp128 %sub
 }
@@ -81,7 +81,7 @@ define double @test_divdf3(double %a, double %b) #0 {
 
 define fp128 @test_divtf3(fp128 %a, fp128 %b) #0 {
   ; CHECK-LABEL:  test_divtf3:
-  ; CHECK:        call __divtf3
+  ; CHECK:        call _Q_div
   %div = fdiv fp128 %a, %b
   ret fp128 %div
 }
@@ -103,7 +103,7 @@ define i1 @test_unorddf2(double %a, double %b) #0 {
 
 define i1 @test_unordtf2(fp128 %a, fp128 %b) #0 {
   ; CHECK-LABEL:  test_unordtf2:
-  ; CHECK:        call __unordtf2
+  ; CHECK:        call _Q_cmp
   %cmp = fcmp uno fp128 %a, %b
   ret i1 %cmp
 }
@@ -124,7 +124,7 @@ define i1 @test_eqdf2(double %a, double %b) #0 {
 
 define i1 @test_eqtf2(fp128 %a, fp128 %b) #0 {
   ; CHECK-LABEL:  test_eqtf2:
-  ; CHECK:        call __eqtf2
+  ; CHECK:        call _Q_feq
   %cmp = fcmp oeq fp128 %a, %b
   ret i1 %cmp
 }
@@ -145,7 +145,7 @@ define i1 @test_nedf2(double %a, double %b) #0 {
 
 define i1 @test_netf2(fp128 %a, fp128 %b) #0 {
   ; CHECK-LABEL:  test_netf2:
-  ; CHECK:        call __netf2
+  ; CHECK:        call _Q_fne
   %cmp = fcmp une fp128 %a, %b
   ret i1 %cmp
 }
@@ -166,7 +166,7 @@ define i1 @test_gedf2(double %a, double %b) #0 {
 
 define i1 @test_getf2(fp128 %a, fp128 %b) #0 {
   ; CHECK-LABEL:  test_getf2:
-  ; CHECK:        call __getf2
+  ; CHECK:        call _Q_fge
   %cmp = fcmp oge fp128 %a, %b
   ret i1 %cmp
 }
@@ -187,7 +187,7 @@ define i1 @test_ltdf2(double %a, double %b) #0 {
 
 define i1 @test_lttf2(fp128 %a, fp128 %b) #0 {
   ; CHECK-LABEL:  test_lttf2:
-  ; CHECK:        call __lttf2
+  ; CHECK:        call _Q_flt
   %cmp = fcmp olt fp128 %a, %b
   ret i1 %cmp
 }
@@ -208,7 +208,7 @@ define i1 @test_ledf2(double %a, double %b) #0 {
 
 define i1 @test_letf2(fp128 %a, fp128 %b) #0 {
   ; CHECK-LABEL:  test_letf2:
-  ; CHECK:        call __letf2
+  ; CHECK:        call _Q_fle
   %cmp = fcmp ole fp128 %a, %b
   ret i1 %cmp
 }
@@ -229,7 +229,7 @@ define i1 @test_gtdf2(double %a, double %b) #0 {
 
 define i1 @test_gttf2(fp128 %a, fp128 %b) #0 {
   ; CHECK-LABEL:  test_gttf2:
-  ; CHECK:        call __gttf2
+  ; CHECK:        call _Q_fgt
   %cmp = fcmp ogt fp128 %a, %b
   ret i1 %cmp
 }
