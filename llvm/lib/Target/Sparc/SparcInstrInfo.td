@@ -184,13 +184,13 @@ def SparcMEMriAsmOperand : AsmOperandClass {
 
 def simm5Op : Operand<iPTR> {
   let OperandType = "OPERAND_IMMEDIATE";
-  let DecoderMethod = "DecodeSIMM5";
+  let DecoderMethod = "DecodeSIMM<5>";
   let EncoderMethod = "getSImm5OpValue";
 }
 
 def simm13Op : Operand<iPTR> {
   let OperandType = "OPERAND_IMMEDIATE";
-  let DecoderMethod = "DecodeSIMM13";
+  let DecoderMethod = "DecodeSIMM<13>";
   let EncoderMethod = "getSImm13OpValue";
 }
 
@@ -199,11 +199,13 @@ def simm13Op : Operand<iPTR> {
 // respectively.
 def simm10Op : Operand<i32> {
   let OperandType = "OPERAND_IMMEDIATE";
+  let DecoderMethod = "DecodeSIMM<10>";
   let EncoderMethod = "getSImm10OpValue";
 }
 
 def simm11Op : Operand<i32> {
   let OperandType = "OPERAND_IMMEDIATE";
+  let DecoderMethod = "DecodeSIMM<11>";
   let EncoderMethod = "getSImm11OpValue";
 }
 

@@ -275,17 +275,11 @@ static DecodeStatus DecodeCall(MCInst &MI, unsigned insn, uint64_t Address,
   return MCDisassembler::Success;
 }
 
-static DecodeStatus DecodeSIMM5(MCInst &MI, unsigned insn, uint64_t Address,
-                                const MCDisassembler *Decoder) {
-  assert(isUInt<5>(insn));
-  MI.addOperand(MCOperand::createImm(SignExtend64<5>(insn)));
-  return MCDisassembler::Success;
-}
-
-static DecodeStatus DecodeSIMM13(MCInst &MI, unsigned insn, uint64_t Address,
-                                 const MCDisassembler *Decoder) {
-  assert(isUInt<13>(insn));
-  MI.addOperand(MCOperand::createImm(SignExtend64<13>(insn)));
+template <unsigned N>
+static DecodeStatus DecodeSIMM(MCInst &MI, unsigned insn, uint64_t Address,
+                               const MCDisassembler *Decoder) {
+  assert(isUInt<N>(insn));
+  MI.addOperand(MCOperand::createImm(SignExtend64<N>(insn)));
   return MCDisassembler::Success;
 }
 

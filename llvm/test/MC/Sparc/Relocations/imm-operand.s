@@ -61,9 +61,9 @@ ta b - a
 
 .ifdef V9
 # OBJ64-NEXT: tne %xcc, 0x10
-# OBJ64-NEXT: movrz %o0, 0x3fc, %o1
+# OBJ64-NEXT: movrz %o0, -0x4, %o1
 # OBJ64-NEXT: movne %xcc, 0x10, %o1
-# OBJ64-NEXT: movne %icc, 0x7fc, %o1
+# OBJ64-NEXT: movne %icc, -0x4, %o1
 tne %xcc, b - a
 movrz %o0, y, %o1
 movne %xcc, b - a, %o1
