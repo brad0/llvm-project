@@ -40,9 +40,35 @@
 ; RUN: llc -mtriple=mips -mcpu=mips32 -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32
 ; MIPS32: ISA: MIPS32
+; RUN: llc -mtriple=mips -mcpu=4kc -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32
+; RUN: llc -mtriple=mips -mcpu=4km -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32
+; RUN: llc -mtriple=mips -mcpu=4kp -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32
+; RUN: llc -mtriple=mips -mcpu=4ksc -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32
 ; RUN: llc -mtriple=mips -mcpu=mips32r2 -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2
 ; MIPS32R2: ISA: MIPS32r2
+; RUN: llc -mtriple=mips -mcpu=4kec -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2
+; RUN: llc -mtriple=mips -mcpu=4kem -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2
+; RUN: llc -mtriple=mips -mcpu=4kep -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2
+; RUN: llc -mtriple=mips -mcpu=4ksd -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2
+; RUN: llc -mtriple=mips -mcpu=m4k -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2
+; RUN: llc -mtriple=mips -mcpu=24kc -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2
+; RUN: llc -mtriple=mips -mcpu=34kn -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2
+; RUN: llc -mtriple=mips -mcpu=m14k -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2
+; RUN: llc -mtriple=mips -mcpu=m14kc -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2
 ; RUN: llc -mtriple=mips -mcpu=24kf2_1 -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2
 ; RUN: llc -mtriple=mips -mcpu=24kf -filetype=obj < %s \
@@ -81,6 +107,12 @@
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2-DSP
 ; RUN: llc -mtriple=mips -mcpu=interaptiv -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2-DSP
+; RUN: llc -mtriple=mips -mcpu=24kec -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2-DSP
+; RUN: llc -mtriple=mips -mcpu=34kc -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2-DSP
+; RUN: llc -mtriple=mips -mcpu=1004kc -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2-DSP
 ; MIPS32R2-DSP: ISA: MIPS32r2
 ; MIPS32R2-DSP: ASEs: DSP{{$}}
 ; RUN: llc -mtriple=mips -mcpu=74kf2_1 -filetype=obj < %s \
@@ -95,6 +127,12 @@
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2-DSPR2
 ; RUN: llc -mtriple=mips -mcpu=74kf3_2 -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2-DSPR2
+; RUN: llc -mtriple=mips -mcpu=74kc -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2-DSPR2
+; RUN: llc -mtriple=mips -mcpu=m14ke -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2-DSPR2
+; RUN: llc -mtriple=mips -mcpu=m14kec -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R2-DSPR2
 ; MIPS32R2-DSPR2: ISA: MIPS32r2
 ; MIPS32R2-DSPR2: ASEs: DSP, DSPR2{{$}}
 ; RUN: llc -mtriple=mips -mcpu=mips32r3 -filetype=obj < %s \
@@ -103,6 +141,10 @@
 ; RUN: llc -mtriple=mips -mcpu=mips32r5 -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R5
 ; MIPS32R5: ISA: MIPS32r5
+; RUN: llc -mtriple=mips -mcpu=m5100 -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R5
+; RUN: llc -mtriple=mips -mcpu=m5101 -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R5
 ; RUN: llc -mtriple=mips -mcpu=mips32r6 -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS32R6
 ; MIPS32R6: ISA: MIPS32r6
@@ -110,6 +152,8 @@
 ; RUN: llc -mtriple=mips64 -mcpu=mips64 -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS64
 ; MIPS64: ISA: MIPS64
+; RUN: llc -mtriple=mips64 -mcpu=5kc -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS64
 ; RUN: llc -mtriple=mips64 -mcpu=5kf -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS64
 ; RUN: llc -mtriple=mips64 -mcpu=20kc -filetype=obj < %s \

@@ -15,6 +15,88 @@
 // DEF-FREEBSD: "-msoft-float"
 // DEF-FREEBSD: "-mfloat-abi" "soft"
 //
+// Default for the processors without an FPU
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=4kc \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=4km \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=4kp \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=4ksc \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=4kec \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=4kem \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=4kep \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=4ksd \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=m4k \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=24kc \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=24kec \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=34kc \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=34kn \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=74kc \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=1004kc \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=m14k \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=m14kc \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=m14ke \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=m14kec \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=m5101 \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips64-linux-gnuabi64 -march=5kc \
+// RUN:   | FileCheck --check-prefix=DEF-SOFT-CPU %s
+// DEF-SOFT-CPU: "-target-feature" "+soft-float"
+// DEF-SOFT-CPU: "-msoft-float"
+// DEF-SOFT-CPU: "-mfloat-abi" "soft"
+//
+// The processors with an FPU, and an explicit -mhard-float
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=24kf \
+// RUN:   | FileCheck --check-prefix=CHECK-DEF %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=m5100 \
+// RUN:   | FileCheck --check-prefix=CHECK-DEF %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=24kc -mhard-float \
+// RUN:   | FileCheck --check-prefix=CHECK-HARD %s
+// RUN: %clang -c %s -### -o %t.o 2>&1 \
+// RUN:     --target=mips-linux-gnu -march=24kc -mfloat-abi=hard \
+// RUN:   | FileCheck --check-prefix=CHECK-ABI-HARD %s
+//
 // -mhard-float
 // RUN: %clang -c %s -### -o %t.o 2>&1 \
 // RUN:     --target=mips-linux-gnu -mhard-float \

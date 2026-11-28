@@ -48,7 +48,12 @@ static constexpr llvm::StringLiteral ValidCPUNames[] = {
     {"34kf"},       {"34kf1_1"},    {"34kfx"},      {"34kx"},     {"1004kf2_1"},
     {"1004kf"},     {"1004kf1_1"},  {"interaptiv"}, {"74kf2_1"},  {"74kf"},
     {"74kf1_1"},    {"74kfx"},      {"74kx"},       {"74kf3_2"},  {"5kf"},
-    {"20kc"},       {"sr71000"},    {"xlp"},        {"p6600"}};
+    {"20kc"},       {"sr71000"},    {"xlp"},        {"p6600"},    {"4kc"},
+    {"4km"},        {"4kp"},        {"4ksc"},       {"4kec"},     {"4kem"},
+    {"4kep"},       {"4ksd"},       {"m4k"},        {"24kc"},     {"34kn"},
+    {"m14k"},       {"m14kc"},      {"24kec"},      {"34kc"},     {"1004kc"},
+    {"74kc"},       {"m14ke"},      {"m14kec"},     {"m5100"},    {"m5101"},
+    {"5kc"}};
 
 bool MipsTargetInfo::isValidCPUName(StringRef Name) const {
   return llvm::is_contained(ValidCPUNames, Name);
@@ -76,18 +81,25 @@ StringRef MipsTargetInfo::getISAForCPU(StringRef CPU) {
       .Cases({"5kf", "20kc", "sr71000"}, "mips64")
       .Cases({"xlp"}, "mips64r2")
       .Cases({"p6600"}, "mips64r6")
+      .Cases({"4kc", "4km", "4kp", "4ksc"}, "mips32")
+      .Cases({"4kec", "4kem", "4kep", "4ksd", "m4k", "24kc", "34kn", "m14k",
+              "m14kc", "24kec", "34kc", "1004kc", "74kc", "m14ke", "m14kec"},
+             "mips32r2")
+      .Cases({"m5100", "m5101"}, "mips32r5")
+      .Case("5kc", "mips64")
       .Default(CPU);
 }
 
 void MipsTargetInfo::setASEsForCPU(StringRef CPU,
                                    llvm::StringMap<bool> &Features) {
-  if (llvm::is_contained(
-          {"74kf2_1", "74kf", "74kf1_1", "74kfx", "74kx", "74kf3_2"}, CPU))
+  if (llvm::is_contained({"74kf2_1", "74kf", "74kf1_1", "74kfx", "74kx",
+                          "74kf3_2", "74kc", "m14ke", "m14kec"},
+                         CPU))
     Features["dspr2"] = Features["dsp"] = true;
   else if (llvm::is_contained({"24kef2_1", "24kef", "24kef1_1", "24kefx",
                                "24kex", "34kf2_1", "34kf", "34kf1_1", "34kfx",
                                "34kx", "1004kf2_1", "1004kf", "1004kf1_1",
-                               "interaptiv"},
+                               "interaptiv", "24kec", "34kc", "1004kc"},
                               CPU))
     Features["dsp"] = true;
 }

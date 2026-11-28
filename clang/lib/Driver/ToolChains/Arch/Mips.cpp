@@ -37,6 +37,12 @@ StringRef mips::getISAForCPU(StringRef CPU) {
       .Cases({"5kf", "20kc", "sr71000"}, "mips64")
       .Cases({"xlp"}, "mips64r2")
       .Cases({"p6600"}, "mips64r6")
+      .Cases({"4kc", "4km", "4kp", "4ksc"}, "mips32")
+      .Cases({"4kec", "4kem", "4kep", "4ksd", "m4k", "24kc", "34kn", "m14k",
+              "m14kc", "24kec", "34kc", "1004kc", "74kc", "m14ke", "m14kec"},
+             "mips32r2")
+      .Cases({"m5100", "m5101"}, "mips32r5")
+      .Case("5kc", "mips64")
       .Default(CPU);
 }
 
@@ -163,6 +169,16 @@ StringRef mips::getGnuCompatibleMipsABIName(StringRef ABI) {
       .Default(ABI);
 }
 
+// The processors GCC defaults to soft-float for, as they have no FPU.
+static bool isSoftFloatCPU(StringRef CPU) {
+  return llvm::StringSwitch<bool>(CPU)
+      .Cases({"4kc", "4km", "4kp", "4ksc", "4kec", "4kem", "4kep", "4ksd"},
+             true)
+      .Cases({"m4k", "24kc", "24kec", "34kc", "34kn", "74kc", "1004kc"}, true)
+      .Cases({"m14k", "m14kc", "m14ke", "m14kec", "m5101", "5kc"}, true)
+      .Default(false);
+}
+
 // Select the MIPS float ABI as determined by -msoft-float, -mhard-float,
 // and -mfloat-abi=.
 mips::FloatABI mips::getMipsFloatABI(const Driver &D, const ArgList &Args,
@@ -187,15 +203,19 @@ mips::FloatABI mips::getMipsFloatABI(const Driver &D, const ArgList &Args,
     }
   }
 
-  // If unspecified, choose the default based on the platform.
+  // If unspecified, choose the default based on the processor or the
+  // platform.
   if (ABI == mips::FloatABI::Invalid) {
-    if (Triple.isOSFreeBSD()) {
+    StringRef CPUName, ABIName;
+    getMipsCPUAndABI(Args, Triple, CPUName, ABIName);
+    if (isSoftFloatCPU(CPUName)) {
+      // Like GCC, assume "soft" for the processors without an FPU.
+      ABI = mips::FloatABI::Soft;
+    } else if (Triple.isOSFreeBSD()) {
       // For FreeBSD, assume "soft" on all flavors of MIPS.
       ABI = mips::FloatABI::Soft;
     } else {
       // Assume "hard", because it's a default value used by gcc.
-      // When we start to recognize specific target MIPS processors,
-      // we will be able to select the default more correctly.
       ABI = mips::FloatABI::Hard;
     }
   }

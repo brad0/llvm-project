@@ -7673,6 +7673,13 @@ bool MipsAsmParser::parseSetArchDirective() {
           .Cases({"5kf", "20kc", "sr71000"}, "mips64")
           .Cases({"xlp"}, "mips64r2")
           .Cases({"p6600"}, "mips64r6")
+          .Cases({"4kc", "4km", "4kp", "4ksc"}, "mips32")
+          .Cases({"4kec", "4kem", "4kep", "4ksd", "m4k", "24kc", "34kn", "m14k",
+                  "m14kc", "24kec", "34kc", "1004kc", "74kc", "m14ke",
+                  "m14kec"},
+                 "mips32r2")
+          .Cases({"m5100", "m5101"}, "mips32r5")
+          .Case("5kc", "mips64")
           .Default("");
 
   if (ArchFeatureName.empty())

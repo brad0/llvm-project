@@ -1842,6 +1842,72 @@
 // MIPS-ARCH-5:#define __mips64 1
 // MIPS-ARCH-5-NOT:#define __mips_isa_rev {{.*}}
 
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
+// RUN:            -target-cpu 4kc < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-4KC %s
+//
+// MIPS-ARCH-4KC:#define _MIPS_ARCH "4kc"
+// MIPS-ARCH-4KC:#define _MIPS_ARCH_4KC 1
+// MIPS-ARCH-4KC:#define _MIPS_ISA _MIPS_ISA_MIPS32
+// MIPS-ARCH-4KC:#define __mips 32
+// MIPS-ARCH-4KC:#define __mips_isa_rev 1
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
+// RUN:            -target-cpu 24kc < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-24KC %s
+//
+// MIPS-ARCH-24KC:#define _MIPS_ARCH "24kc"
+// MIPS-ARCH-24KC:#define _MIPS_ARCH_24KC 1
+// MIPS-ARCH-24KC:#define _MIPS_ISA _MIPS_ISA_MIPS32
+// MIPS-ARCH-24KC:#define __mips 32
+// MIPS-ARCH-24KC-NOT:#define __mips_dsp {{.*}}
+// MIPS-ARCH-24KC:#define __mips_isa_rev 2
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
+// RUN:            -target-cpu 24kec < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-24KEC %s
+//
+// MIPS-ARCH-24KEC:#define _MIPS_ARCH "24kec"
+// MIPS-ARCH-24KEC:#define _MIPS_ARCH_24KEC 1
+// MIPS-ARCH-24KEC:#define _MIPS_ISA _MIPS_ISA_MIPS32
+// MIPS-ARCH-24KEC:#define __mips 32
+// MIPS-ARCH-24KEC:#define __mips_dsp 1
+// MIPS-ARCH-24KEC:#define __mips_dsp_rev 1
+// MIPS-ARCH-24KEC:#define __mips_isa_rev 2
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
+// RUN:            -target-cpu 74kc < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-74KC %s
+//
+// MIPS-ARCH-74KC:#define _MIPS_ARCH "74kc"
+// MIPS-ARCH-74KC:#define _MIPS_ARCH_74KC 1
+// MIPS-ARCH-74KC:#define _MIPS_ISA _MIPS_ISA_MIPS32
+// MIPS-ARCH-74KC:#define __mips 32
+// MIPS-ARCH-74KC:#define __mips_dsp 1
+// MIPS-ARCH-74KC:#define __mips_dsp_rev 2
+// MIPS-ARCH-74KC:#define __mips_dspr2 1
+// MIPS-ARCH-74KC:#define __mips_isa_rev 2
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
+// RUN:            -target-cpu m5101 < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-M5101 %s
+//
+// MIPS-ARCH-M5101:#define _MIPS_ARCH "m5101"
+// MIPS-ARCH-M5101:#define _MIPS_ARCH_M5101 1
+// MIPS-ARCH-M5101:#define _MIPS_ISA _MIPS_ISA_MIPS32
+// MIPS-ARCH-M5101:#define __mips 32
+// MIPS-ARCH-M5101:#define __mips_isa_rev 5
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu 5kc < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-5KC %s
+//
+// MIPS-ARCH-5KC:#define _MIPS_ARCH "5kc"
+// MIPS-ARCH-5KC:#define _MIPS_ARCH_5KC 1
+// MIPS-ARCH-5KC:#define _MIPS_ISA _MIPS_ISA_MIPS64
+// MIPS-ARCH-5KC:#define __mips 64
+// MIPS-ARCH-5KC:#define __mips_isa_rev 1
+
 // RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
 // RUN:            -target-cpu r10000 < /dev/null \
 // RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-R10000 %s
