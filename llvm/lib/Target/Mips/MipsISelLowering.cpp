@@ -4788,7 +4788,7 @@ MipsTargetLowering::isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const {
 EVT MipsTargetLowering::getOptimalMemOpType(
     LLVMContext &Context, const MemOp &Op,
     const AttributeList &FuncAttributes) const {
-  if (Subtarget.hasMips64())
+  if (Subtarget.isGP64bit())
     return MVT::i64;
 
   return MVT::i32;
