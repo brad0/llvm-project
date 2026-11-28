@@ -1960,10 +1960,16 @@ void ItaniumRecordLayoutBuilder::LayoutField(const FieldDecl *D,
     }
   }
 
+  // Like GCC, look through arrays when deciding whether a packed struct does
+  // not pack a field because it is a non-POD class.
+  const CXXRecordDecl *PackedFieldClass =
+      Context.getLangOpts().isCompatibleWith(LangOptions::ClangABI::Ver23)
+          ? FieldClass
+          : Context.getBaseElementType(D->getType())->getAsCXXRecordDecl();
   bool FieldPacked =
       (Packed &&
-       (!FieldClass || FieldClass->isPOD() ||
-        FieldClass->hasAttr<PackedAttr>() ||
+       (!PackedFieldClass || PackedFieldClass->isPOD() ||
+        PackedFieldClass->hasAttr<PackedAttr>() ||
         Context.getLangOpts().isCompatibleWith(LangOptions::ClangABI::Ver15) ||
         Target.isPS() || Target.isOSDarwin() || Target.isOSAIX())) ||
       D->hasAttr<PackedAttr>();

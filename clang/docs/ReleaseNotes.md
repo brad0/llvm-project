@@ -167,6 +167,12 @@ features cannot lower the translation-unit ABI level;
   for homogeneous aggregate classification.
   `-fclang-abi-compat=23` restores the previous behavior. (#GH218799)
 
+- A struct declared with `__attribute__((packed))` no longer packs a field
+  that is an array of a non-POD class, just as it does not pack a field of a
+  non-POD class type, matching GCC. This changes the offset of such a field and
+  the alignment of the struct. Darwin, PlayStation and AIX are unchanged.
+  `-fclang-abi-compat=23` restores the previous behavior.
+
 - On Windows targets using the Microsoft record layout, `#pragma pack` no longer
   reduces the alignment of fields of vector type (e.g. `__m128`) or of x87
   80-bit `long double` (with `-mlong-double-80`), including when such fields

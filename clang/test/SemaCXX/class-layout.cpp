@@ -7,6 +7,7 @@
 // RUN: %clang_cc1 -triple x86_64-unknown-unknown %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -Wno-invalid-offsetof -fclang-abi-compat=14 -DCLANG_ABI_COMPAT=14
 // RUN: %clang_cc1 -triple x86_64-unknown-unknown %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -Wno-invalid-offsetof -fclang-abi-compat=15 -DCLANG_ABI_COMPAT=15
 // RUN: %clang_cc1 -triple x86_64-unknown-unknown %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -Wno-invalid-offsetof -fclang-abi-compat=16 -DCLANG_ABI_COMPAT=16
+// RUN: %clang_cc1 -triple x86_64-unknown-unknown %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -Wno-invalid-offsetof -fclang-abi-compat=23 -DCLANG_ABI_COMPAT=23
 // RUN: %clang_cc1 -triple powerpc-ibm-aix7.3.0.0 %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -Wno-invalid-offsetof -DCLANG_ABI_COMPAT=15
 // RUN: %clang_cc1 -triple powerpc-ibm-aix7.3.0.0 %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -Wno-invalid-offsetof -fclang-abi-compat=15 -DCLANG_ABI_COMPAT=15
 // RUN: %clang_cc1 -triple powerpc64-ibm-aix7.3.0.0 %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -Wno-invalid-offsetof -DCLANG_ABI_COMPAT=15
@@ -23,6 +24,7 @@
 // RUN: %clang_cc1 -fexperimental-new-constant-interpreter -triple x86_64-unknown-unknown %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -fclang-abi-compat=14 -DCLANG_ABI_COMPAT=14 -Wno-invalid-offsetof
 // RUN: %clang_cc1 -fexperimental-new-constant-interpreter -triple x86_64-unknown-unknown %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -fclang-abi-compat=15 -DCLANG_ABI_COMPAT=15 -Wno-invalid-offsetof
 // RUN: %clang_cc1 -fexperimental-new-constant-interpreter -triple x86_64-unknown-unknown %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -fclang-abi-compat=16 -DCLANG_ABI_COMPAT=16 -Wno-invalid-offsetof
+// RUN: %clang_cc1 -fexperimental-new-constant-interpreter -triple x86_64-unknown-unknown %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -fclang-abi-compat=23 -DCLANG_ABI_COMPAT=23 -Wno-invalid-offsetof
 // RUN: %clang_cc1 -fexperimental-new-constant-interpreter -triple powerpc-ibm-aix7.3.0.0 %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -DCLANG_ABI_COMPAT=15 -Wno-invalid-offsetof
 // RUN: %clang_cc1 -fexperimental-new-constant-interpreter -triple powerpc-ibm-aix7.3.0.0 %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -fclang-abi-compat=15 -DCLANG_ABI_COMPAT=15 -Wno-invalid-offsetof
 // RUN: %clang_cc1 -fexperimental-new-constant-interpreter -triple powerpc64-ibm-aix7.3.0.0 %s -fsyntax-only -verify -std=c++11 -Wno-inaccessible-base -DCLANG_ABI_COMPAT=15 -Wno-invalid-offsetof
@@ -662,6 +664,25 @@ _Static_assert(_Alignof(t2) == 4, "");
 #endif
 _Static_assert(sizeof(t2) == 8, ""); // it's still packing the rest of the struct
 } // namespace non_pod
+
+namespace non_pod_array {
+struct t1 {
+protected:
+  int a;
+};
+// GCC also does not pack an array of a non-POD class.
+struct t2 {
+  char c;
+  t1 v[2];
+} __attribute__((packed));
+#if defined(CLANG_ABI_COMPAT) && CLANG_ABI_COMPAT <= 23
+_Static_assert(__builtin_offsetof(t2, v) == 1, "");
+_Static_assert(_Alignof(t2) == 1, "");
+#else
+_Static_assert(__builtin_offsetof(t2, v) == 4, "");
+_Static_assert(_Alignof(t2) == 4, "");
+#endif
+} // namespace non_pod_array
 
 namespace non_pod_packed {
 struct t1 {
