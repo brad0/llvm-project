@@ -1842,6 +1842,83 @@
 // MIPS-ARCH-5:#define __mips64 1
 // MIPS-ARCH-5-NOT:#define __mips_isa_rev {{.*}}
 
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu r10000 < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-R10000 %s
+//
+// MIPS-ARCH-R10000:#define _MIPS_ARCH "r10000"
+// MIPS-ARCH-R10000:#define _MIPS_ARCH_R10000 1
+// MIPS-ARCH-R10000:#define _MIPS_ISA _MIPS_ISA_MIPS4
+// MIPS-ARCH-R10000:#define __mips 4
+// MIPS-ARCH-R10000-NOT:#define __mips_dsp {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
+// RUN:            -target-cpu 24kf < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-24KF %s
+//
+// MIPS-ARCH-24KF:#define _MIPS_ARCH "24kf"
+// MIPS-ARCH-24KF:#define _MIPS_ARCH_24KF 1
+// MIPS-ARCH-24KF:#define _MIPS_ISA _MIPS_ISA_MIPS32
+// MIPS-ARCH-24KF:#define __mips 32
+// MIPS-ARCH-24KF-NOT:#define __mips_dsp {{.*}}
+// MIPS-ARCH-24KF:#define __mips_isa_rev 2
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
+// RUN:            -target-cpu 34kf < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-34KF %s
+//
+// MIPS-ARCH-34KF:#define _MIPS_ARCH "34kf"
+// MIPS-ARCH-34KF:#define _MIPS_ARCH_34KF 1
+// MIPS-ARCH-34KF:#define _MIPS_ISA _MIPS_ISA_MIPS32
+// MIPS-ARCH-34KF:#define __mips 32
+// MIPS-ARCH-34KF:#define __mips_dsp 1
+// MIPS-ARCH-34KF:#define __mips_dsp_rev 1
+// MIPS-ARCH-34KF:#define __mips_isa_rev 2
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
+// RUN:            -target-cpu 74kf < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-74KF %s
+//
+// MIPS-ARCH-74KF:#define _MIPS_ARCH "74kf"
+// MIPS-ARCH-74KF:#define _MIPS_ARCH_74KF 1
+// MIPS-ARCH-74KF:#define _MIPS_ISA _MIPS_ISA_MIPS32
+// MIPS-ARCH-74KF:#define __mips 32
+// MIPS-ARCH-74KF:#define __mips_dsp 1
+// MIPS-ARCH-74KF:#define __mips_dsp_rev 2
+// MIPS-ARCH-74KF:#define __mips_dspr2 1
+// MIPS-ARCH-74KF:#define __mips_isa_rev 2
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu 5kf < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-5KF %s
+//
+// MIPS-ARCH-5KF:#define _MIPS_ARCH "5kf"
+// MIPS-ARCH-5KF:#define _MIPS_ARCH_5KF 1
+// MIPS-ARCH-5KF:#define _MIPS_ISA _MIPS_ISA_MIPS64
+// MIPS-ARCH-5KF:#define __mips 64
+// MIPS-ARCH-5KF:#define __mips_isa_rev 1
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu xlp < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-XLP %s
+//
+// MIPS-ARCH-XLP:#define _MIPS_ARCH "xlp"
+// MIPS-ARCH-XLP:#define _MIPS_ARCH_XLP 1
+// MIPS-ARCH-XLP:#define _MIPS_ISA _MIPS_ISA_MIPS64
+// MIPS-ARCH-XLP:#define __mips 64
+// MIPS-ARCH-XLP:#define __mips_isa_rev 2
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu p6600 < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-P6600 %s
+//
+// MIPS-ARCH-P6600:#define _MIPS_ARCH "p6600"
+// MIPS-ARCH-P6600:#define _MIPS_ARCH_P6600 1
+// MIPS-ARCH-P6600:#define _MIPS_ISA _MIPS_ISA_MIPS64
+// MIPS-ARCH-P6600:#define __mips 64
+// MIPS-ARCH-P6600:#define __mips_isa_rev 6
+// MIPS-ARCH-P6600:#define __mips_nan2008 1
+
 // RUN: %clang_cc1 -E -dM -ffreestanding -triple=mipsel-none-none \
 // RUN:            -target-cpu r5900 < /dev/null \
 // RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-R5900 %s

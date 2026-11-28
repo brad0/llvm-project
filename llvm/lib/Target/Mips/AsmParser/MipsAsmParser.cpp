@@ -7655,12 +7655,24 @@ bool MipsAsmParser::parseSetArchDirective() {
           .Case("mips64r6", "mips64r6")
           .Case("octeon", "cnmips")
           .Case("octeon+", "cnmipsp")
-          // These are implementations of Mips1, Mips2 and Mips3.
+          // These are implementations of an ISA.
           .Cases({"r2000", "r3000"}, "mips1")
           .Case("r6000", "mips2")
           .Cases({"r4000", "r4400", "r4600", "orion", "r4700", "vr4300"},
                  "mips3")
           .Cases({"loongson2e", "loongson2f"}, "mips3")
+          .Cases({"r8000", "r10000", "r12000", "r14000", "r16000", "vr5000",
+                  "rm7000"},
+                 "mips4")
+          .Cases({"24kf2_1",   "24kf",    "24kf1_1",   "24kfx",      "24kx",
+                  "24kef2_1",  "24kef",   "24kef1_1",  "24kefx",     "24kex",
+                  "34kf2_1",   "34kf",    "34kf1_1",   "34kfx",      "34kx",
+                  "1004kf2_1", "1004kf",  "1004kf1_1", "interaptiv", "74kf2_1",
+                  "74kf",      "74kf1_1", "74kfx",     "74kx",       "74kf3_2"},
+                 "mips32r2")
+          .Cases({"5kf", "20kc", "sr71000"}, "mips64")
+          .Cases({"xlp"}, "mips64r2")
+          .Cases({"p6600"}, "mips64r6")
           .Default("");
 
   if (ArchFeatureName.empty())

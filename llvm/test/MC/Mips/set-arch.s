@@ -62,6 +62,18 @@
     dadd        $2, $2, $2
     .set arch=loongson2f
     dadd        $2, $2, $2
+    .set arch=r10000
+    ldxc1       $f8, $2($4)
+    .set arch=24kf
+    rotr        $2, $2, 15
+    .set arch=74kf
+    rotr        $2, $2, 15
+    .set arch=5kf
+    daddi       $2, $2, 10
+    .set arch=xlp
+    drotr32     $1, $14, 15
+    .set arch=p6600
+    mod         $2, $4, $6
 
 # CHECK: .set arch=mips1
 # CHECK: add         $2, $2, $2
@@ -111,3 +123,15 @@
 # CHECK: dadd        $2, $2, $2
 # CHECK: .set arch=loongson2f
 # CHECK: dadd        $2, $2, $2
+# CHECK: .set arch=r10000
+# CHECK: ldxc1       $f8, $2($4)
+# CHECK: .set arch=24kf
+# CHECK: rotr        $2, $2, 15
+# CHECK: .set arch=74kf
+# CHECK: rotr        $2, $2, 15
+# CHECK: .set arch=5kf
+# CHECK: daddi       $2, $2, 10
+# CHECK: .set arch=xlp
+# CHECK: drotr32     $1, $14, 15
+# CHECK: .set arch=p6600
+# CHECK: mod         $2, $4, $6

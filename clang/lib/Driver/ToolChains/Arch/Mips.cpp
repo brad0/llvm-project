@@ -25,6 +25,18 @@ StringRef mips::getISAForCPU(StringRef CPU) {
       .Case("r6000", "mips2")
       .Cases({"r4000", "r4400", "r4600", "orion", "r4700", "vr4300"}, "mips3")
       .Cases({"loongson2e", "loongson2f"}, "mips3")
+      .Cases(
+          {"r8000", "r10000", "r12000", "r14000", "r16000", "vr5000", "rm7000"},
+          "mips4")
+      .Cases({"24kf2_1",   "24kf",    "24kf1_1",   "24kfx",      "24kx",
+              "24kef2_1",  "24kef",   "24kef1_1",  "24kefx",     "24kex",
+              "34kf2_1",   "34kf",    "34kf1_1",   "34kfx",      "34kx",
+              "1004kf2_1", "1004kf",  "1004kf1_1", "interaptiv", "74kf2_1",
+              "74kf",      "74kf1_1", "74kfx",     "74kx",       "74kf3_2"},
+             "mips32r2")
+      .Cases({"5kf", "20kc", "sr71000"}, "mips64")
+      .Cases({"xlp"}, "mips64r2")
+      .Cases({"p6600"}, "mips64r6")
       .Default(CPU);
 }
 
@@ -488,7 +500,7 @@ mips::IEEE754Standard mips::getIEEE754Standard(StringRef &CPU) {
 
 bool mips::hasCompactBranches(StringRef &CPU) {
   // mips32r6 and mips64r6 have compact branches.
-  return llvm::StringSwitch<bool>(CPU)
+  return llvm::StringSwitch<bool>(getISAForCPU(CPU))
       .Case("mips32r6", true)
       .Case("mips64r6", true)
       .Case("i6400", true)
@@ -515,7 +527,7 @@ bool mips::isNaN2008(const Driver &D, const ArgList &Args,
         .Default(false);
 
   // NaN2008 is the default for MIPS32r6/MIPS64r6.
-  return llvm::StringSwitch<bool>(getCPUName(D, Args, Triple))
+  return llvm::StringSwitch<bool>(getISAForCPU(getCPUName(D, Args, Triple)))
       .Cases({"mips32r6", "mips64r6"}, true)
       .Default(false);
 }
@@ -550,7 +562,7 @@ bool mips::shouldUseFPXX(const ArgList &Args, const llvm::Triple &Triple,
   // FP64 should be used for MSA.
   if (Arg *A = Args.getLastArg(options::OPT_mmsa))
     if (A->getOption().matches(options::OPT_mmsa))
-      UseFPXX = llvm::StringSwitch<bool>(CPUName)
+      UseFPXX = llvm::StringSwitch<bool>(getISAForCPU(CPUName))
                     .Cases({"mips32r2", "mips32r3", "mips32r5"}, false)
                     .Cases({"mips64r2", "mips64r3", "mips64r5"}, false)
                     .Default(UseFPXX);
@@ -561,7 +573,7 @@ bool mips::shouldUseFPXX(const ArgList &Args, const llvm::Triple &Triple,
 bool mips::supportsIndirectJumpHazardBarrier(StringRef &CPU) {
   // Supporting the hazard barrier method of dealing with indirect
   // jumps requires MIPSR2 support.
-  return llvm::StringSwitch<bool>(CPU)
+  return llvm::StringSwitch<bool>(getISAForCPU(CPU))
       .Case("mips32r2", true)
       .Case("mips32r3", true)
       .Case("mips32r5", true)

@@ -209,6 +209,38 @@
 // MIPS-ARCH-4: "-target-abi" "o32"
 //
 // RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=r10000 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R10000 %s
+// MIPS-ARCH-R10000: "-target-cpu" "r10000"
+// MIPS-ARCH-R10000: "-target-feature" "+fpxx"
+// MIPS-ARCH-R10000: "-target-abi" "o32"
+//
+// RUN: %clang --target=mips64-linux-gnuabi64 -### -c %s \
+// RUN:        -march=r10000 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R10000-N64 %s
+// MIPS-ARCH-R10000-N64: "-target-cpu" "r10000"
+// MIPS-ARCH-R10000-N64: "-target-abi" "n64"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=74kf 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-74KF %s
+// MIPS-ARCH-74KF: "-target-cpu" "74kf"
+// MIPS-ARCH-74KF: "-target-feature" "+fpxx"
+// MIPS-ARCH-74KF: "-target-abi" "o32"
+//
+// RUN: %clang --target=mips64-linux-gnuabi64 -### -c %s \
+// RUN:        -march=5kf 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-5KF %s
+// MIPS-ARCH-5KF: "-target-cpu" "5kf"
+// MIPS-ARCH-5KF: "-target-abi" "n64"
+//
+// RUN: %clang --target=mips64-linux-gnuabi64 -### -c %s \
+// RUN:        -march=p6600 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-P6600 %s
+// MIPS-ARCH-P6600: "-target-cpu" "p6600"
+// MIPS-ARCH-P6600: "-target-abi" "n64"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
 // RUN:        -march=mips5 2>&1 \
 // RUN:   | FileCheck -check-prefix=MIPS-ARCH-5 %s
 // MIPS-ARCH-5: "-target-cpu" "mips5"

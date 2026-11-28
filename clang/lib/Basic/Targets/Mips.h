@@ -176,9 +176,10 @@ public:
       Features["mips64r2"] = Features["cnmips"] = true;
     else if (CPU == "octeon+")
       Features["mips64r2"] = Features["cnmips"] = Features["cnmipsp"] = true;
-    else if (StringRef ISA = getISAForCPU(CPU); ISA != CPU)
+    else if (StringRef ISA = getISAForCPU(CPU); ISA != CPU) {
       Features[ISA] = true;
-    else
+      setASEsForCPU(CPU, Features);
+    } else
       Features[CPU] = true;
     return TargetInfo::initFeatureMap(Features, Diags, CPU, FeaturesVec);
   }
@@ -188,6 +189,9 @@ public:
   // The ISA a CPU name without a backend feature of its own stands for, or
   // the CPU name itself.
   static StringRef getISAForCPU(StringRef CPU);
+
+  // Enable the ASEs that GCC enables for a CPU name, such as DSP for 24kef.
+  static void setASEsForCPU(StringRef CPU, llvm::StringMap<bool> &Features);
 
   void getTargetDefines(const LangOptions &Opts,
                         MacroBuilder &Builder) const override;

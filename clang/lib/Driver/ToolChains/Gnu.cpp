@@ -1426,17 +1426,18 @@ bool clang::driver::findMIPSMultilibs(const Driver &D,
   addMultilibFlag(TargetTriple.isMIPS32(), "-m32", Flags);
   addMultilibFlag(TargetTriple.isMIPS64(), "-m64", Flags);
   addMultilibFlag(isMips16(Args), "-mips16", Flags);
-  addMultilibFlag(CPUName == "mips32", "-march=mips32", Flags);
-  addMultilibFlag(CPUName == "mips32r2" || CPUName == "mips32r3" ||
-                      CPUName == "mips32r5" || CPUName == "p5600",
+  StringRef ISAName = tools::mips::getISAForCPU(CPUName);
+  addMultilibFlag(ISAName == "mips32", "-march=mips32", Flags);
+  addMultilibFlag(ISAName == "mips32r2" || ISAName == "mips32r3" ||
+                      ISAName == "mips32r5" || CPUName == "p5600",
                   "-march=mips32r2", Flags);
-  addMultilibFlag(CPUName == "mips32r6", "-march=mips32r6", Flags);
-  addMultilibFlag(CPUName == "mips64", "-march=mips64", Flags);
-  addMultilibFlag(CPUName == "mips64r2" || CPUName == "mips64r3" ||
-                      CPUName == "mips64r5" || CPUName == "octeon" ||
+  addMultilibFlag(ISAName == "mips32r6", "-march=mips32r6", Flags);
+  addMultilibFlag(ISAName == "mips64", "-march=mips64", Flags);
+  addMultilibFlag(ISAName == "mips64r2" || ISAName == "mips64r3" ||
+                      ISAName == "mips64r5" || CPUName == "octeon" ||
                       CPUName == "octeon+",
                   "-march=mips64r2", Flags);
-  addMultilibFlag(CPUName == "mips64r6" || CPUName == "i6400" ||
+  addMultilibFlag(ISAName == "mips64r6" || CPUName == "i6400" ||
                       CPUName == "i6500",
                   "-march=mips64r6", Flags);
   addMultilibFlag(isMicroMips(Args), "-mmicromips", Flags);
