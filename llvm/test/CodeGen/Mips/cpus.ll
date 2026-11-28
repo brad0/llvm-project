@@ -7,9 +7,15 @@
 ; RUN: llc -mtriple=mips -mcpu=mips1 -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS1
 ; MIPS1: ISA: MIPS1
+; RUN: llc -mtriple=mips -mcpu=r2000 -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS1
+; RUN: llc -mtriple=mips -mcpu=r3000 -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS1
 ; RUN: llc -mtriple=mips -mcpu=mips2 -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS2
 ; MIPS2: ISA: MIPS2
+; RUN: llc -mtriple=mips -mcpu=r6000 -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS2
 ; RUN: llc -mtriple=mips64 -mcpu=mips3 -filetype=obj < %s \
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS3
 ; MIPS3: ISA: MIPS3
@@ -62,6 +68,36 @@
 ; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=R5900
 ; R5900: ISA: MIPS3
 ; R5900: ISA Extension: Toshiba R5900
+
+; RUN: llc -mtriple=mips64 -mcpu=r4000 -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS3-IMPL
+; RUN: llc -mtriple=mips64 -mcpu=r4400 -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS3-IMPL
+; RUN: llc -mtriple=mips64 -mcpu=r4600 -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS3-IMPL
+; RUN: llc -mtriple=mips64 -mcpu=orion -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS3-IMPL
+; RUN: llc -mtriple=mips64 -mcpu=r4700 -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS3-IMPL
+; RUN: llc -mtriple=mips64 -mcpu=vr4300 -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=MIPS3-IMPL
+; MIPS3-IMPL: ISA: MIPS3
+; MIPS3-IMPL: ISA Extension: None
+
+; RUN: llc -mtriple=mips64el -mcpu=loongson2e -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=LOONGSON2E
+; LOONGSON2E: ISA: MIPS3
+; LOONGSON2E: ISA Extension: Loongson 2E
+; RUN: llc -mtriple=mips64el -mcpu=loongson2f -filetype=obj < %s \
+; RUN:   | llvm-readelf -A - | FileCheck %s --check-prefix=LOONGSON2F
+; LOONGSON2F: ISA: MIPS3
+; LOONGSON2F: ISA Extension: Loongson 2F
+; RUN: llc -mtriple=mips64el -mcpu=loongson2e -filetype=obj < %s \
+; RUN:   | llvm-readelf -h - | FileCheck %s --check-prefix=LOONGSON2E-FLAGS
+; LOONGSON2E-FLAGS: Flags: {{.*}}, loongson-2e, mips3
+; RUN: llc -mtriple=mips64el -mcpu=loongson2f -filetype=obj < %s \
+; RUN:   | llvm-readelf -h - | FileCheck %s --check-prefix=LOONGSON2F-FLAGS
+; LOONGSON2F-FLAGS: Flags: {{.*}}, loongson-2f, mips3
 
 ; Check that we reject CPUs that are not implemented.
 

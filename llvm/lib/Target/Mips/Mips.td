@@ -198,6 +198,14 @@ def FeatureR5900 : SubtargetFeature<"r5900", "IsR5900", "true",
                                     [FeatureMips3, FeatureSingleFloat,
                                      FeatureFixR5900]>;
 
+def FeatureLoongson2E : SubtargetFeature<"loongson2e", "IsLoongson2E", "true",
+                                         "Loongson 2E Support",
+                                         [FeatureMips3]>;
+
+def FeatureLoongson2F : SubtargetFeature<"loongson2f", "IsLoongson2F", "true",
+                                         "Loongson 2F Support",
+                                         [FeatureMips3]>;
+
 def FeatureUseTCCInDIV : SubtargetFeature<
                                "use-tcc-in-div",
                                "UseTCCInDIV", "false",
@@ -295,7 +303,10 @@ class Proc<string Name, list<SubtargetFeature> Features>
 
 def : Proc<"generic", [FeatureMips32]>;
 def : Proc<"mips1", [FeatureMips1]>;
+def : Proc<"r2000", [FeatureMips1]>;
+def : Proc<"r3000", [FeatureMips1]>;
 def : Proc<"mips2", [FeatureMips2]>;
+def : Proc<"r6000", [FeatureMips2]>;
 def : Proc<"mips32", [FeatureMips32]>;
 def : Proc<"mips32r2", [FeatureMips32r2]>;
 def : Proc<"mips32r3", [FeatureMips32r3]>;
@@ -303,6 +314,14 @@ def : Proc<"mips32r5", [FeatureMips32r5]>;
 def : Proc<"mips32r6", [FeatureMips32r6]>;
 
 def : Proc<"mips3", [FeatureMips3]>;
+def : Proc<"r4000", [FeatureMips3]>;
+def : Proc<"r4400", [FeatureMips3]>;
+def : Proc<"r4600", [FeatureMips3]>;
+def : Proc<"orion", [FeatureMips3]>;
+def : Proc<"r4700", [FeatureMips3]>;
+def : Proc<"vr4300", [FeatureMips3]>;
+def : Proc<"loongson2e", [FeatureLoongson2E]>;
+def : Proc<"loongson2f", [FeatureLoongson2F]>;
 def : Proc<"mips4", [FeatureMips4]>;
 def : Proc<"mips5", [FeatureMips5]>;
 def : Proc<"mips64", [FeatureMips64]>;

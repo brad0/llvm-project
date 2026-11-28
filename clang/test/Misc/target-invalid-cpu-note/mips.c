@@ -26,4 +26,15 @@
 // CHECK-SAME: {{^}}, r5900
 // CHECK-SAME: {{^}}, i6400
 // CHECK-SAME: {{^}}, i6500
+// CHECK-SAME: {{^}}, r2000
+// CHECK-SAME: {{^}}, r3000
+// CHECK-SAME: {{^}}, r6000
+// CHECK-SAME: {{^}}, r4000
+// CHECK-SAME: {{^}}, r4400
+// CHECK-SAME: {{^}}, r4600
+// CHECK-SAME: {{^}}, orion
+// CHECK-SAME: {{^}}, r4700
+// CHECK-SAME: {{^}}, vr4300
+// CHECK-SAME: {{^}}, loongson2e
+// CHECK-SAME: {{^}}, loongson2f
 // CHECK-SAME: {{$}}

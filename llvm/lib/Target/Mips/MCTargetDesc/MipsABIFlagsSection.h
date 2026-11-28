@@ -150,6 +150,10 @@ public:
       ISAExtension = Mips::AFL_EXT_OCTEON;
     else if (P.isR5900())
       ISAExtension = Mips::AFL_EXT_5900;
+    else if (P.isLoongson2E())
+      ISAExtension = Mips::AFL_EXT_LOONGSON_2E;
+    else if (P.isLoongson2F())
+      ISAExtension = Mips::AFL_EXT_LOONGSON_2F;
     else
       ISAExtension = Mips::AFL_EXT_NONE;
   }

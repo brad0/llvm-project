@@ -80,10 +80,127 @@
 // MIPS-ARCH-2: "-target-abi" "o32"
 //
 // RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=r2000 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R2000 %s
+// MIPS-ARCH-R2000: "-target-cpu" "r2000"
+// MIPS-ARCH-R2000-NOT: "+fpxx"
+// MIPS-ARCH-R2000: "-target-abi" "o32"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=r3000 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R3000 %s
+// MIPS-ARCH-R3000: "-target-cpu" "r3000"
+// MIPS-ARCH-R3000-NOT: "+fpxx"
+// MIPS-ARCH-R3000: "-target-abi" "o32"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=r6000 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R6000 %s
+// MIPS-ARCH-R6000: "-target-cpu" "r6000"
+// MIPS-ARCH-R6000: "-target-feature" "+fpxx"
+// MIPS-ARCH-R6000: "-target-abi" "o32"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
 // RUN:        -march=mips3 2>&1 \
 // RUN:   | FileCheck -check-prefix=MIPS-ARCH-3 %s
 // MIPS-ARCH-3: "-target-cpu" "mips3"
 // MIPS-ARCH-3: "-target-abi" "o32"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=r4000 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R4000 %s
+// MIPS-ARCH-R4000: "-target-cpu" "r4000"
+// MIPS-ARCH-R4000: "-target-feature" "+fpxx"
+// MIPS-ARCH-R4000: "-target-abi" "o32"
+// RUN: %clang --target=mips64-linux-gnuabi64 -### -c %s \
+// RUN:        -march=r4000 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R4000-N64 %s
+// MIPS-ARCH-R4000-N64: "-target-cpu" "r4000"
+// MIPS-ARCH-R4000-N64: "-target-abi" "n64"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=r4400 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R4400 %s
+// MIPS-ARCH-R4400: "-target-cpu" "r4400"
+// MIPS-ARCH-R4400: "-target-feature" "+fpxx"
+// MIPS-ARCH-R4400: "-target-abi" "o32"
+// RUN: %clang --target=mips64-linux-gnuabi64 -### -c %s \
+// RUN:        -march=r4400 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R4400-N64 %s
+// MIPS-ARCH-R4400-N64: "-target-cpu" "r4400"
+// MIPS-ARCH-R4400-N64: "-target-abi" "n64"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=r4600 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R4600 %s
+// MIPS-ARCH-R4600: "-target-cpu" "r4600"
+// MIPS-ARCH-R4600: "-target-feature" "+fpxx"
+// MIPS-ARCH-R4600: "-target-abi" "o32"
+// RUN: %clang --target=mips64-linux-gnuabi64 -### -c %s \
+// RUN:        -march=r4600 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R4600-N64 %s
+// MIPS-ARCH-R4600-N64: "-target-cpu" "r4600"
+// MIPS-ARCH-R4600-N64: "-target-abi" "n64"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=orion 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-ORION %s
+// MIPS-ARCH-ORION: "-target-cpu" "orion"
+// MIPS-ARCH-ORION: "-target-feature" "+fpxx"
+// MIPS-ARCH-ORION: "-target-abi" "o32"
+// RUN: %clang --target=mips64-linux-gnuabi64 -### -c %s \
+// RUN:        -march=orion 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-ORION-N64 %s
+// MIPS-ARCH-ORION-N64: "-target-cpu" "orion"
+// MIPS-ARCH-ORION-N64: "-target-abi" "n64"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=r4700 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R4700 %s
+// MIPS-ARCH-R4700: "-target-cpu" "r4700"
+// MIPS-ARCH-R4700: "-target-feature" "+fpxx"
+// MIPS-ARCH-R4700: "-target-abi" "o32"
+// RUN: %clang --target=mips64-linux-gnuabi64 -### -c %s \
+// RUN:        -march=r4700 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-R4700-N64 %s
+// MIPS-ARCH-R4700-N64: "-target-cpu" "r4700"
+// MIPS-ARCH-R4700-N64: "-target-abi" "n64"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=vr4300 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-VR4300 %s
+// MIPS-ARCH-VR4300: "-target-cpu" "vr4300"
+// MIPS-ARCH-VR4300: "-target-feature" "+fpxx"
+// MIPS-ARCH-VR4300: "-target-abi" "o32"
+// RUN: %clang --target=mips64-linux-gnuabi64 -### -c %s \
+// RUN:        -march=vr4300 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-VR4300-N64 %s
+// MIPS-ARCH-VR4300-N64: "-target-cpu" "vr4300"
+// MIPS-ARCH-VR4300-N64: "-target-abi" "n64"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=loongson2e 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-LOONGSON2E %s
+// MIPS-ARCH-LOONGSON2E: "-target-cpu" "loongson2e"
+// MIPS-ARCH-LOONGSON2E: "-target-feature" "+fpxx"
+// MIPS-ARCH-LOONGSON2E: "-target-abi" "o32"
+// RUN: %clang --target=mips64-linux-gnuabi64 -### -c %s \
+// RUN:        -march=loongson2e 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-LOONGSON2E-N64 %s
+// MIPS-ARCH-LOONGSON2E-N64: "-target-cpu" "loongson2e"
+// MIPS-ARCH-LOONGSON2E-N64: "-target-abi" "n64"
+//
+// RUN: %clang --target=mips-linux-gnu -### -c %s \
+// RUN:        -march=loongson2f 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-LOONGSON2F %s
+// MIPS-ARCH-LOONGSON2F: "-target-cpu" "loongson2f"
+// MIPS-ARCH-LOONGSON2F: "-target-feature" "+fpxx"
+// MIPS-ARCH-LOONGSON2F: "-target-abi" "o32"
+// RUN: %clang --target=mips64-linux-gnuabi64 -### -c %s \
+// RUN:        -march=loongson2f 2>&1 \
+// RUN:   | FileCheck -check-prefix=MIPS-ARCH-LOONGSON2F-N64 %s
+// MIPS-ARCH-LOONGSON2F-N64: "-target-cpu" "loongson2f"
+// MIPS-ARCH-LOONGSON2F-N64: "-target-abi" "n64"
 //
 // RUN: %clang --target=mips-linux-gnu -### -c %s \
 // RUN:        -march=mips4 2>&1 \

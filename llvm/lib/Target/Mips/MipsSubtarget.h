@@ -151,6 +151,10 @@ class MipsSubtarget : public MipsGenSubtargetInfo {
   // IsR5900 - CPU is R5900 (PlayStation 2 Emotion Engine).
   bool IsR5900;
 
+  // IsLoongson2E/IsLoongson2F - CPU is a Loongson 2E or 2F.
+  bool IsLoongson2E = false;
+  bool IsLoongson2F = false;
+
   // FixR5900 - Enable R5900 short loop erratum fix.
   bool FixR5900;
 
@@ -320,6 +324,8 @@ public:
   bool hasCnMips() const { return HasCnMips; }
   bool hasCnMipsP() const { return HasCnMipsP; }
   bool isR5900() const { return IsR5900; }
+  bool isLoongson2E() const { return IsLoongson2E; }
+  bool isLoongson2F() const { return IsLoongson2F; }
   bool fixR5900() const { return FixR5900; }
 
   bool isLittle() const { return IsLittle; }

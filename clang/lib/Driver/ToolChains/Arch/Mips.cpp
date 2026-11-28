@@ -18,6 +18,16 @@ using namespace clang::driver::tools;
 using namespace clang;
 using namespace llvm::opt;
 
+StringRef mips::getISAForCPU(StringRef CPU) {
+  // These CPU names stand for an implementation of an ISA.
+  return llvm::StringSwitch<StringRef>(CPU)
+      .Cases({"r2000", "r3000"}, "mips1")
+      .Case("r6000", "mips2")
+      .Cases({"r4000", "r4400", "r4600", "orion", "r4700", "vr4300"}, "mips3")
+      .Cases({"loongson2e", "loongson2f"}, "mips3")
+      .Default(CPU);
+}
+
 // Get CPU and ABI names. They are not independent
 // so we have to calculate them together.
 void mips::getMipsCPUAndABI(const ArgList &Args, const llvm::Triple &Triple,
@@ -84,7 +94,7 @@ void mips::getMipsCPUAndABI(const ArgList &Args, const llvm::Triple &Triple,
   if (ABIName.empty() &&
       (Triple.getVendor() == llvm::Triple::MipsTechnologies ||
        Triple.getVendor() == llvm::Triple::ImaginationTechnologies)) {
-    ABIName = llvm::StringSwitch<const char *>(CPUName)
+    ABIName = llvm::StringSwitch<const char *>(getISAForCPU(CPUName))
                   .Case("mips1", "o32")
                   .Case("mips2", "o32")
                   .Case("mips3", "n64")
@@ -457,7 +467,7 @@ mips::IEEE754Standard mips::getIEEE754Standard(StringRef &CPU) {
   // IEEE754-2008 standard. Support for this standard was first introduced
   // in Release 3. However, other compilers have traditionally allowed it
   // for Release 2 so we should do the same.
-  return (IEEE754Standard)llvm::StringSwitch<int>(CPU)
+  return (IEEE754Standard)llvm::StringSwitch<int>(getISAForCPU(CPU))
       .Case("mips1", Legacy)
       .Case("mips2", Legacy)
       .Case("mips3", Legacy)
@@ -520,7 +530,7 @@ bool mips::isFPXXDefault(const llvm::Triple &Triple, StringRef CPUName,
   if (FloatABI == mips::FloatABI::Soft)
     return false;
 
-  return llvm::StringSwitch<bool>(CPUName)
+  return llvm::StringSwitch<bool>(getISAForCPU(CPUName))
       .Cases({"mips2", "mips3", "mips4", "mips5"}, true)
       .Cases({"mips32", "mips32r2", "mips32r3", "mips32r5"}, true)
       .Cases({"mips64", "mips64r2", "mips64r3", "mips64r5"}, true)

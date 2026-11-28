@@ -710,6 +710,12 @@ public:
   }
 
   bool isR5900() const { return (getSTI().hasFeature(Mips::FeatureR5900)); }
+  bool isLoongson2E() const {
+    return getSTI().hasFeature(Mips::FeatureLoongson2E);
+  }
+  bool isLoongson2F() const {
+    return getSTI().hasFeature(Mips::FeatureLoongson2F);
+  }
 
   bool inPicMode() {
     return IsPicEnabled;
@@ -7649,7 +7655,12 @@ bool MipsAsmParser::parseSetArchDirective() {
           .Case("mips64r6", "mips64r6")
           .Case("octeon", "cnmips")
           .Case("octeon+", "cnmipsp")
-          .Case("r4000", "mips3") // This is an implementation of Mips3.
+          // These are implementations of Mips1, Mips2 and Mips3.
+          .Cases({"r2000", "r3000"}, "mips1")
+          .Case("r6000", "mips2")
+          .Cases({"r4000", "r4400", "r4600", "orion", "r4700", "vr4300"},
+                 "mips3")
+          .Cases({"loongson2e", "loongson2f"}, "mips3")
           .Default("");
 
   if (ArchFeatureName.empty())

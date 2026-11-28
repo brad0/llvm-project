@@ -939,6 +939,10 @@ MipsTargetELFStreamer::MipsTargetELFStreamer(MCStreamer &S,
     EFlags |= ELF::EF_MIPS_MACH_OCTEON;
   else if (Features[Mips::FeatureR5900])
     EFlags |= ELF::EF_MIPS_MACH_5900;
+  else if (Features[Mips::FeatureLoongson2E])
+    EFlags |= ELF::EF_MIPS_MACH_LS2E;
+  else if (Features[Mips::FeatureLoongson2F])
+    EFlags |= ELF::EF_MIPS_MACH_LS2F;
 
   // Other options.
   if (isMips16Enabled())

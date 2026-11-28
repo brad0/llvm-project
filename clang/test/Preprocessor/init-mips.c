@@ -1682,6 +1682,26 @@
 // MIPS-ARCH-1-NOT:#define __mips_isa_rev {{.*}}
 
 // RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
+// RUN:            -target-cpu r2000 < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-R2000 %s
+//
+// MIPS-ARCH-R2000:#define _MIPS_ARCH "r2000"
+// MIPS-ARCH-R2000:#define _MIPS_ARCH_R2000 1
+// MIPS-ARCH-R2000:#define _MIPS_ISA _MIPS_ISA_MIPS1
+// MIPS-ARCH-R2000:#define __mips 1
+// MIPS-ARCH-R2000-NOT:#define __mips_isa_rev {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
+// RUN:            -target-cpu r3000 < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-R3000 %s
+//
+// MIPS-ARCH-R3000:#define _MIPS_ARCH "r3000"
+// MIPS-ARCH-R3000:#define _MIPS_ARCH_R3000 1
+// MIPS-ARCH-R3000:#define _MIPS_ISA _MIPS_ISA_MIPS1
+// MIPS-ARCH-R3000:#define __mips 1
+// MIPS-ARCH-R3000-NOT:#define __mips_isa_rev {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
 // RUN:            -target-cpu mips2 < /dev/null \
 // RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-2 %s
 //
@@ -1690,6 +1710,16 @@
 // MIPS-ARCH-2:#define _MIPS_ISA _MIPS_ISA_MIPS2
 // MIPS-ARCH-2:#define __mips 2
 // MIPS-ARCH-2-NOT:#define __mips_isa_rev {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips-none-none \
+// RUN:            -target-cpu r6000 < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-R6000 %s
+//
+// MIPS-ARCH-R6000:#define _MIPS_ARCH "r6000"
+// MIPS-ARCH-R6000:#define _MIPS_ARCH_R6000 1
+// MIPS-ARCH-R6000:#define _MIPS_ISA _MIPS_ISA_MIPS2
+// MIPS-ARCH-R6000:#define __mips 2
+// MIPS-ARCH-R6000-NOT:#define __mips_isa_rev {{.*}}
 
 // RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
 // RUN:            -target-cpu mips3 < /dev/null \
@@ -1701,6 +1731,94 @@
 // MIPS-ARCH-3:#define __mips 3
 // MIPS-ARCH-3:#define __mips64 1
 // MIPS-ARCH-3-NOT:#define __mips_isa_rev {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu r4000 < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-R4000 %s
+//
+// MIPS-ARCH-R4000:#define _MIPS_ARCH "r4000"
+// MIPS-ARCH-R4000:#define _MIPS_ARCH_R4000 1
+// MIPS-ARCH-R4000:#define _MIPS_ISA _MIPS_ISA_MIPS3
+// MIPS-ARCH-R4000:#define __mips 3
+// MIPS-ARCH-R4000:#define __mips64 1
+// MIPS-ARCH-R4000-NOT:#define __mips_isa_rev {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu r4400 < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-R4400 %s
+//
+// MIPS-ARCH-R4400:#define _MIPS_ARCH "r4400"
+// MIPS-ARCH-R4400:#define _MIPS_ARCH_R4400 1
+// MIPS-ARCH-R4400:#define _MIPS_ISA _MIPS_ISA_MIPS3
+// MIPS-ARCH-R4400:#define __mips 3
+// MIPS-ARCH-R4400:#define __mips64 1
+// MIPS-ARCH-R4400-NOT:#define __mips_isa_rev {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu r4600 < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-R4600 %s
+//
+// MIPS-ARCH-R4600:#define _MIPS_ARCH "r4600"
+// MIPS-ARCH-R4600:#define _MIPS_ARCH_R4600 1
+// MIPS-ARCH-R4600:#define _MIPS_ISA _MIPS_ISA_MIPS3
+// MIPS-ARCH-R4600:#define __mips 3
+// MIPS-ARCH-R4600:#define __mips64 1
+// MIPS-ARCH-R4600-NOT:#define __mips_isa_rev {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu orion < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-ORION %s
+//
+// MIPS-ARCH-ORION:#define _MIPS_ARCH "orion"
+// MIPS-ARCH-ORION:#define _MIPS_ARCH_ORION 1
+// MIPS-ARCH-ORION:#define _MIPS_ISA _MIPS_ISA_MIPS3
+// MIPS-ARCH-ORION:#define __mips 3
+// MIPS-ARCH-ORION:#define __mips64 1
+// MIPS-ARCH-ORION-NOT:#define __mips_isa_rev {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu r4700 < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-R4700 %s
+//
+// MIPS-ARCH-R4700:#define _MIPS_ARCH "r4700"
+// MIPS-ARCH-R4700:#define _MIPS_ARCH_R4700 1
+// MIPS-ARCH-R4700:#define _MIPS_ISA _MIPS_ISA_MIPS3
+// MIPS-ARCH-R4700:#define __mips 3
+// MIPS-ARCH-R4700:#define __mips64 1
+// MIPS-ARCH-R4700-NOT:#define __mips_isa_rev {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu vr4300 < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-VR4300 %s
+//
+// MIPS-ARCH-VR4300:#define _MIPS_ARCH "vr4300"
+// MIPS-ARCH-VR4300:#define _MIPS_ARCH_VR4300 1
+// MIPS-ARCH-VR4300:#define _MIPS_ISA _MIPS_ISA_MIPS3
+// MIPS-ARCH-VR4300:#define __mips 3
+// MIPS-ARCH-VR4300:#define __mips64 1
+// MIPS-ARCH-VR4300-NOT:#define __mips_isa_rev {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu loongson2e < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-LOONGSON2E %s
+//
+// MIPS-ARCH-LOONGSON2E:#define _MIPS_ARCH "loongson2e"
+// MIPS-ARCH-LOONGSON2E:#define _MIPS_ARCH_LOONGSON2E 1
+// MIPS-ARCH-LOONGSON2E:#define _MIPS_ISA _MIPS_ISA_MIPS3
+// MIPS-ARCH-LOONGSON2E:#define __mips 3
+// MIPS-ARCH-LOONGSON2E:#define __mips64 1
+// MIPS-ARCH-LOONGSON2E-NOT:#define __mips_isa_rev {{.*}}
+
+// RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
+// RUN:            -target-cpu loongson2f < /dev/null \
+// RUN:   | FileCheck -match-full-lines -check-prefix MIPS-ARCH-LOONGSON2F %s
+//
+// MIPS-ARCH-LOONGSON2F:#define _MIPS_ARCH "loongson2f"
+// MIPS-ARCH-LOONGSON2F:#define _MIPS_ARCH_LOONGSON2F 1
+// MIPS-ARCH-LOONGSON2F:#define _MIPS_ISA _MIPS_ISA_MIPS3
+// MIPS-ARCH-LOONGSON2F:#define __mips 3
+// MIPS-ARCH-LOONGSON2F:#define __mips64 1
+// MIPS-ARCH-LOONGSON2F-NOT:#define __mips_isa_rev {{.*}}
 
 // RUN: %clang_cc1 -E -dM -ffreestanding -triple=mips64-none-none \
 // RUN:            -target-cpu mips4 < /dev/null \

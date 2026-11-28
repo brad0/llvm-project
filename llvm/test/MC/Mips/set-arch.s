@@ -40,7 +40,27 @@
     baddu $9, $6, $7
     .set arch=octeon+
     saa         $2, ($5)
+    .set arch=r2000
+    add         $2, $2, $2
+    .set arch=r3000
+    add         $2, $2, $2
+    .set arch=r6000
+    ll          $2, -2($2)
     .set arch=r4000
+    dadd        $2, $2, $2
+    .set arch=r4400
+    dadd        $2, $2, $2
+    .set arch=r4600
+    dadd        $2, $2, $2
+    .set arch=orion
+    dadd        $2, $2, $2
+    .set arch=r4700
+    dadd        $2, $2, $2
+    .set arch=vr4300
+    dadd        $2, $2, $2
+    .set arch=loongson2e
+    dadd        $2, $2, $2
+    .set arch=loongson2f
     dadd        $2, $2, $2
 
 # CHECK: .set arch=mips1
@@ -69,5 +89,25 @@
 # CHECK: baddu $9, $6, $7
 # CHECK: .set arch=octeon+
 # CHECK: saa         $2, ($5)
+# CHECK: .set arch=r2000
+# CHECK: add         $2, $2, $2
+# CHECK: .set arch=r3000
+# CHECK: add         $2, $2, $2
+# CHECK: .set arch=r6000
+# CHECK: ll          $2, -2($2)
 # CHECK: .set arch=r4000
+# CHECK: dadd        $2, $2, $2
+# CHECK: .set arch=r4400
+# CHECK: dadd        $2, $2, $2
+# CHECK: .set arch=r4600
+# CHECK: dadd        $2, $2, $2
+# CHECK: .set arch=orion
+# CHECK: dadd        $2, $2, $2
+# CHECK: .set arch=r4700
+# CHECK: dadd        $2, $2, $2
+# CHECK: .set arch=vr4300
+# CHECK: dadd        $2, $2, $2
+# CHECK: .set arch=loongson2e
+# CHECK: dadd        $2, $2, $2
+# CHECK: .set arch=loongson2f
 # CHECK: dadd        $2, $2, $2

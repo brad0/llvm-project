@@ -176,12 +176,18 @@ public:
       Features["mips64r2"] = Features["cnmips"] = true;
     else if (CPU == "octeon+")
       Features["mips64r2"] = Features["cnmips"] = Features["cnmipsp"] = true;
+    else if (StringRef ISA = getISAForCPU(CPU); ISA != CPU)
+      Features[ISA] = true;
     else
       Features[CPU] = true;
     return TargetInfo::initFeatureMap(Features, Diags, CPU, FeaturesVec);
   }
 
   void setISAFromFeatures(const std::vector<std::string> &Features);
+
+  // The ISA a CPU name without a backend feature of its own stands for, or
+  // the CPU name itself.
+  static StringRef getISAForCPU(StringRef CPU);
 
   void getTargetDefines(const LangOptions &Opts,
                         MacroBuilder &Builder) const override;

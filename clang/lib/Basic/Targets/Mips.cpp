@@ -35,11 +35,13 @@ static constexpr auto BuiltinInfos = Builtin::MakeInfos<NumBuiltins>({
 });
 
 static constexpr llvm::StringLiteral ValidCPUNames[] = {
-    {"mips1"},  {"mips2"},    {"mips3"},    {"mips4"},    {"mips5"},
-    {"mips32"}, {"mips32r2"}, {"mips32r3"}, {"mips32r5"}, {"mips32r6"},
-    {"mips64"}, {"mips64r2"}, {"mips64r3"}, {"mips64r5"}, {"mips64r6"},
-    {"octeon"}, {"octeon+"},  {"p5600"},    {"r5900"},    {"i6400"},
-    {"i6500"}};
+    {"mips1"},      {"mips2"},     {"mips3"},    {"mips4"},    {"mips5"},
+    {"mips32"},     {"mips32r2"},  {"mips32r3"}, {"mips32r5"}, {"mips32r6"},
+    {"mips64"},     {"mips64r2"},  {"mips64r3"}, {"mips64r5"}, {"mips64r6"},
+    {"octeon"},     {"octeon+"},   {"p5600"},    {"r5900"},    {"i6400"},
+    {"i6500"},      {"r2000"},     {"r3000"},    {"r6000"},    {"r4000"},
+    {"r4400"},      {"r4600"},     {"orion"},    {"r4700"},    {"vr4300"},
+    {"loongson2e"}, {"loongson2f"}};
 
 bool MipsTargetInfo::isValidCPUName(StringRef Name) const {
   return llvm::is_contained(ValidCPUNames, Name);
@@ -50,8 +52,17 @@ void MipsTargetInfo::fillValidCPUList(
   Values.append(std::begin(ValidCPUNames), std::end(ValidCPUNames));
 }
 
+StringRef MipsTargetInfo::getISAForCPU(StringRef CPU) {
+  return llvm::StringSwitch<StringRef>(CPU)
+      .Cases({"r2000", "r3000"}, "mips1")
+      .Case("r6000", "mips2")
+      .Cases({"r4000", "r4400", "r4600", "orion", "r4700", "vr4300"}, "mips3")
+      .Default(CPU);
+}
+
 // Clang does not expand the features implied by a CPU feature, so p5600,
-// i6400, i6500 and r5900 are listed with the ISA they imply.
+// i6400, i6500, r5900 and the Loongson 2 CPUs are listed with the ISA they
+// imply.
 void MipsTargetInfo::setISAFromFeatures(
     const std::vector<std::string> &Features) {
   ISALevel = ISARev = 0;
@@ -60,7 +71,7 @@ void MipsTargetInfo::setISAFromFeatures(
         llvm::StringSwitch<std::pair<unsigned, unsigned>>(Feature)
             .Case("+mips1", {1, 0})
             .Case("+mips2", {2, 0})
-            .Cases({"+mips3", "+r5900"}, {3, 0})
+            .Cases({"+mips3", "+r5900", "+loongson2e", "+loongson2f"}, {3, 0})
             .Case("+mips4", {4, 0})
             .Case("+mips5", {5, 0})
             .Case("+mips32", {32, 1})

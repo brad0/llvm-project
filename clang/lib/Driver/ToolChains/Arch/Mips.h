@@ -30,6 +30,7 @@ enum class FloatABI {
 };
 
 IEEE754Standard getIEEE754Standard(StringRef &CPU);
+StringRef getISAForCPU(StringRef CPU);
 bool hasCompactBranches(StringRef &CPU);
 void getMipsCPUAndABI(const llvm::opt::ArgList &Args,
                       const llvm::Triple &Triple, StringRef &CPUName,
