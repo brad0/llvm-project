@@ -487,21 +487,21 @@ let AdditionalPredicates = [NotInMicroMips], mayRaiseFPException = 1, Uses = [FC
 let DecoderNamespace = "MipsFP64", mayRaiseFPException = 1 in {
   let AdditionalPredicates = [NotInMicroMips] in {
   def ROUND_L_S : ABSS_FT<"round.l.s", FGR64Opnd, FGR32Opnd>,
-                  ABSS_FM<0x8, 16>, ISA_MIPS2, FGR_64;
+                  ABSS_FM<0x8, 16>, INSN_MIPS3_32R2, FGR_64;
   def ROUND_L_D64 : ABSS_FT<"round.l.d", FGR64Opnd, FGR64Opnd>,
-                    ABSS_FM<0x8, 17>, INSN_MIPS3_32, FGR_64;
+                    ABSS_FM<0x8, 17>, INSN_MIPS3_32R2, FGR_64;
   def TRUNC_L_S : ABSS_FT<"trunc.l.s", FGR64Opnd, FGR32Opnd>,
-                  ABSS_FM<0x9, 16>, ISA_MIPS2, FGR_64;
+                  ABSS_FM<0x9, 16>, INSN_MIPS3_32R2, FGR_64;
   def TRUNC_L_D64 : ABSS_FT<"trunc.l.d", FGR64Opnd, FGR64Opnd>,
-                    ABSS_FM<0x9, 17>, INSN_MIPS3_32, FGR_64;
+                    ABSS_FM<0x9, 17>, INSN_MIPS3_32R2, FGR_64;
   def CEIL_L_S  : ABSS_FT<"ceil.l.s", FGR64Opnd, FGR32Opnd>,
-                  ABSS_FM<0xa, 16>, ISA_MIPS2, FGR_64;
+                  ABSS_FM<0xa, 16>, INSN_MIPS3_32R2, FGR_64;
   def CEIL_L_D64 : ABSS_FT<"ceil.l.d", FGR64Opnd, FGR64Opnd>,
-                   ABSS_FM<0xa, 17>, INSN_MIPS3_32, FGR_64;
+                   ABSS_FM<0xa, 17>, INSN_MIPS3_32R2, FGR_64;
   def FLOOR_L_S : ABSS_FT<"floor.l.s", FGR64Opnd, FGR32Opnd>,
-                  ABSS_FM<0xb, 16>, ISA_MIPS2, FGR_64;
+                  ABSS_FM<0xb, 16>, INSN_MIPS3_32R2, FGR_64;
   def FLOOR_L_D64 : ABSS_FT<"floor.l.d", FGR64Opnd, FGR64Opnd>,
-                    ABSS_FM<0xb, 17>, INSN_MIPS3_32, FGR_64;
+                    ABSS_FM<0xb, 17>, INSN_MIPS3_32R2, FGR_64;
   }
 }
 
@@ -1130,9 +1130,9 @@ def : MipsPat<(f64 (any_sint_to_fp GPR64Opnd:$src)),
 def : MipsPat<(MipsAnyTruncIntFP FGR64Opnd:$src),
               (TRUNC_W_D64 FGR64Opnd:$src)>, ISA_MIPS2, FGR_64;
 def : MipsPat<(MipsAnyTruncIntFP FGR32Opnd:$src),
-              (TRUNC_L_S FGR32Opnd:$src)>, ISA_MIPS2, FGR_64;
+              (TRUNC_L_S FGR32Opnd:$src)>, INSN_MIPS3_32R2, FGR_64;
 def : MipsPat<(MipsAnyTruncIntFP FGR64Opnd:$src),
-              (TRUNC_L_D64 FGR64Opnd:$src)>, ISA_MIPS2, FGR_64;
+              (TRUNC_L_D64 FGR64Opnd:$src)>, INSN_MIPS3_32R2, FGR_64;
 
 let AdditionalPredicates = [NotInMicroMips] in {
   def : MipsPat<(f32 (any_fpround FGR64Opnd:$src)),
