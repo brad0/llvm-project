@@ -251,6 +251,23 @@ MipsSubtarget::initializeSubtargetDependencies(StringRef CPU, StringRef FS,
   if (isABI_O32())
     IsGP64bit = false;
 
+  // MIPS III and later imply 64-bit FPRs, which N32 and N64 require. Before
+  // MIPS32r2, O32 has no mthc1/mfhc1 to reach the upper half of a 64-bit FPR,
+  // so default to 32-bit FPRs there as GCC does, unless 64-bit FPRs were
+  // requested explicitly.
+  if (isABI_O32() && IsFP64bit && !hasMips32r2()) {
+    SubtargetFeatures Features(FS);
+    bool ExplicitFP64 = false;
+    for (const std::string &Feature : Features.getFeatures()) {
+      if (Feature == "+fp64")
+        ExplicitFP64 = true;
+      else if (Feature == "-fp64")
+        ExplicitFP64 = false;
+    }
+    if (!ExplicitFP64)
+      IsFP64bit = false;
+  }
+
   // Before MIPS32, single-precision arithmetic can only use the even FPRs
   // when the FPRs are 32 bits wide. The odd FPRs only hold the upper half of
   // a double. A single-float FPU such as the R5900 has 32 single-precision

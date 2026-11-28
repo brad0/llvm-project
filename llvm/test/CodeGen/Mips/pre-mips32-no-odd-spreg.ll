@@ -3,13 +3,12 @@
 
 ; RUN: llc -mtriple=mipsel -mcpu=mips1 < %s | FileCheck %s --check-prefix=EVEN
 ; RUN: llc -mtriple=mipsel -mcpu=mips2 < %s | FileCheck %s --check-prefix=EVEN
-; RUN: llc -mtriple=mipsel -mcpu=mips3 -mattr=-fp64 < %s \
-; RUN:   | FileCheck %s --check-prefix=EVEN
-; RUN: llc -mtriple=mipsel -mcpu=mips4 -mattr=-fp64 < %s \
-; RUN:   | FileCheck %s --check-prefix=EVEN
+; RUN: llc -mtriple=mipsel -mcpu=mips3 < %s | FileCheck %s --check-prefix=EVEN
+; RUN: llc -mtriple=mipsel -mcpu=mips4 < %s | FileCheck %s --check-prefix=EVEN
 
 ; RUN: llc -mtriple=mipsel -mcpu=mips32 < %s | FileCheck %s --check-prefix=ODD
-; RUN: llc -mtriple=mipsel -mcpu=mips3 < %s | FileCheck %s --check-prefix=ODD
+; RUN: llc -mtriple=mipsel -mcpu=mips3 -mattr=+fp64 < %s \
+; RUN:   | FileCheck %s --check-prefix=ODD
 ; RUN: llc -mtriple=mipsel -mcpu=mips1 -mattr=+single-float < %s \
 ; RUN:   | FileCheck %s --check-prefix=ODD
 ; RUN: llc -mtriple=mipsel -mcpu=r5900 < %s | FileCheck %s --check-prefix=R5900

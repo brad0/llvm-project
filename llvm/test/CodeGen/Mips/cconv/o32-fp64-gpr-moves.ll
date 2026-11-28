@@ -1,19 +1,19 @@
-; RUN: llc -mtriple=mips64 -mcpu=mips3 -target-abi=o32 -verify-machineinstrs -filetype=obj %s -o /dev/null
-; RUN: llc -mtriple=mips64el -mcpu=mips3 -target-abi=o32 -verify-machineinstrs -filetype=obj %s -o /dev/null
-; RUN: llc -mtriple=mips64 -mcpu=mips4 -target-abi=o32 -verify-machineinstrs -filetype=obj %s -o /dev/null
-; RUN: llc -mtriple=mips64el -mcpu=mips4 -target-abi=o32 -verify-machineinstrs -filetype=obj %s -o /dev/null
-; RUN: llc -mtriple=mips64 -mcpu=mips64 -target-abi=o32 -verify-machineinstrs -filetype=obj %s -o /dev/null
-; RUN: llc -mtriple=mips64el -mcpu=mips64 -target-abi=o32 -verify-machineinstrs -filetype=obj %s -o /dev/null
+; RUN: llc -mtriple=mips64 -mcpu=mips3 -target-abi=o32 -mattr=+fp64 -verify-machineinstrs -filetype=obj %s -o /dev/null
+; RUN: llc -mtriple=mips64el -mcpu=mips3 -target-abi=o32 -mattr=+fp64 -verify-machineinstrs -filetype=obj %s -o /dev/null
+; RUN: llc -mtriple=mips64 -mcpu=mips4 -target-abi=o32 -mattr=+fp64 -verify-machineinstrs -filetype=obj %s -o /dev/null
+; RUN: llc -mtriple=mips64el -mcpu=mips4 -target-abi=o32 -mattr=+fp64 -verify-machineinstrs -filetype=obj %s -o /dev/null
+; RUN: llc -mtriple=mips64 -mcpu=mips64 -target-abi=o32 -mattr=+fp64 -verify-machineinstrs -filetype=obj %s -o /dev/null
+; RUN: llc -mtriple=mips64el -mcpu=mips64 -target-abi=o32 -mattr=+fp64 -verify-machineinstrs -filetype=obj %s -o /dev/null
 ; RUN: llc -mtriple=mips64 -mcpu=mips64r2 -target-abi=o32 -verify-machineinstrs -filetype=obj %s -o /dev/null
 ; RUN: llc -mtriple=mips64el -mcpu=mips64r2 -target-abi=o32 -verify-machineinstrs -filetype=obj %s -o /dev/null
 ; RUN: llc -mtriple=mips64 -mcpu=mips64r6 -target-abi=o32 -verify-machineinstrs -filetype=obj %s -o /dev/null
 ; RUN: llc -mtriple=mips64el -mcpu=mips64r6 -target-abi=o32 -verify-machineinstrs -filetype=obj %s -o /dev/null
-; RUN: llc -mtriple=mips64 -mcpu=mips64 -target-abi=o32 -mattr=+nooddspreg -verify-machineinstrs -filetype=obj %s -o /dev/null
-; RUN: llc -mtriple=mips64el -mcpu=mips64 -target-abi=o32 -mattr=+nooddspreg -verify-machineinstrs -filetype=obj %s -o /dev/null
+; RUN: llc -mtriple=mips64 -mcpu=mips64 -target-abi=o32 -mattr=+fp64,+nooddspreg -verify-machineinstrs -filetype=obj %s -o /dev/null
+; RUN: llc -mtriple=mips64el -mcpu=mips64 -target-abi=o32 -mattr=+fp64,+nooddspreg -verify-machineinstrs -filetype=obj %s -o /dev/null
 ; RUN: llc -mtriple=mips64 -mcpu=mips64r2 -target-abi=o32 -mattr=+nooddspreg -verify-machineinstrs -filetype=obj %s -o /dev/null
 ; RUN: llc -mtriple=mips64el -mcpu=mips64r2 -target-abi=o32 -mattr=+nooddspreg -verify-machineinstrs -filetype=obj %s -o /dev/null
-; RUN: llc -mtriple=mips64 -mcpu=mips64 -target-abi=o32 -verify-machineinstrs < %s | FileCheck %s --check-prefix=SPILL
-; RUN: llc -mtriple=mips64el -mcpu=mips64 -target-abi=o32 -verify-machineinstrs < %s | FileCheck %s --check-prefix=SPILL
+; RUN: llc -mtriple=mips64 -mcpu=mips64 -target-abi=o32 -mattr=+fp64 -verify-machineinstrs < %s | FileCheck %s --check-prefix=SPILL
+; RUN: llc -mtriple=mips64el -mcpu=mips64 -target-abi=o32 -mattr=+fp64 -verify-machineinstrs < %s | FileCheck %s --check-prefix=SPILL
 ; RUN: llc -mtriple=mips64 -mcpu=mips64r2 -target-abi=o32 -verify-machineinstrs < %s | FileCheck %s --check-prefix=DIRECT-BE
 ; RUN: llc -mtriple=mips64el -mcpu=mips64r2 -target-abi=o32 -verify-machineinstrs < %s | FileCheck %s --check-prefix=DIRECT-LE
 
