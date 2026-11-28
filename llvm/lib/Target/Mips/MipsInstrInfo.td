@@ -2646,29 +2646,29 @@ def : MipsInstAlias<"ror $rd, $imm",
 
 def DROL : MipsAsmPseudoInst<(outs),
                              (ins GPR32Opnd:$rs, GPR32Opnd:$rt, GPR32Opnd:$rd),
-                             "drol\t$rs, $rt, $rd">, ISA_MIPS64;
+                             "drol\t$rs, $rt, $rd">, ISA_MIPS3;
 def DROLImm : MipsAsmPseudoInst<(outs),
                                 (ins GPR32Opnd:$rs, GPR32Opnd:$rt, simm16:$imm),
-                                "drol\t$rs, $rt, $imm">, ISA_MIPS64;
+                                "drol\t$rs, $rt, $imm">, ISA_MIPS3;
 def : MipsInstAlias<"drol $rd, $rs",
                     (DROL GPR32Opnd:$rd, GPR32Opnd:$rd, GPR32Opnd:$rs), 0>,
-      ISA_MIPS64;
+      ISA_MIPS3;
 def : MipsInstAlias<"drol $rd, $imm",
                     (DROLImm GPR32Opnd:$rd, GPR32Opnd:$rd, simm16:$imm), 0>,
-      ISA_MIPS64;
+      ISA_MIPS3;
 
 def DROR : MipsAsmPseudoInst<(outs),
                              (ins GPR32Opnd:$rs, GPR32Opnd:$rt, GPR32Opnd:$rd),
-                             "dror\t$rs, $rt, $rd">, ISA_MIPS64;
+                             "dror\t$rs, $rt, $rd">, ISA_MIPS3;
 def DRORImm : MipsAsmPseudoInst<(outs),
                                 (ins GPR32Opnd:$rs, GPR32Opnd:$rt, simm16:$imm),
-                                "dror\t$rs, $rt, $imm">, ISA_MIPS64;
+                                "dror\t$rs, $rt, $imm">, ISA_MIPS3;
 def : MipsInstAlias<"dror $rd, $rs",
                     (DROR GPR32Opnd:$rd, GPR32Opnd:$rd, GPR32Opnd:$rs), 0>,
-      ISA_MIPS64;
+      ISA_MIPS3;
 def : MipsInstAlias<"dror $rd, $imm",
                     (DRORImm GPR32Opnd:$rd, GPR32Opnd:$rd, simm16:$imm), 0>,
-      ISA_MIPS64;
+      ISA_MIPS3;
 
 def ABSMacro : MipsAsmPseudoInst<(outs GPR32Opnd:$rd), (ins GPR32Opnd:$rs),
                                  "abs\t$rd, $rs">;

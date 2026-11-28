@@ -1,3 +1,5 @@
+# RUN: llvm-mc  %s -triple=mips -mcpu=mips3 -show-encoding | FileCheck %s -check-prefix=CHECK-64
+# RUN: llvm-mc  %s -triple=mips -mcpu=mips4 -show-encoding | FileCheck %s -check-prefix=CHECK-64
 # RUN: llvm-mc  %s -triple=mips -mcpu=mips64 -show-encoding | FileCheck %s -check-prefix=CHECK-64
 # RUN: llvm-mc  %s -triple=mips -mcpu=mips64r2 -show-encoding | FileCheck %s -check-prefix=CHECK-64R
 # RUN: llvm-mc  %s -triple=mips -mcpu=mips64r3 -show-encoding | FileCheck %s -check-prefix=CHECK-64R
